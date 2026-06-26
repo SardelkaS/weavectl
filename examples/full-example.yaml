@@ -1,0 +1,462 @@
+# weavectl full-feature example
+# ─────────────────────────────
+# E-commerce platform demonstrating every capability:
+#   • all 6 service shapes
+#   • all 8 interaction types
+#   • all endpoint types (http, grpc, graphql, websocket)
+#   • all async task types (kafka_consumer/producer, amqp_consumer/producer, cron, worker)
+#   • events (publish / subscribe)
+#   • async: true on fire-and-forget interactions
+#   • metadata on interactions
+#
+# Import with:   weavectl serve --config examples/full-example.yaml
+# Or use:        Import → Upload file  inside the UI
+
+version: "1.0"
+name: "E-Commerce Platform"
+description: >
+  Full-featured microservice architecture for an e-commerce system.
+  Showcases all weavectl node shapes, interaction types, and member kinds.
+
+services:
+
+  # ── shape: gateway ──────────────────────────────────────────────────────────
+  - id: api-gateway
+    name: API Gateway
+    shape: gateway
+    color: "#7C3AED"
+    description: "Single entry point. Handles auth, rate-limiting, routing."
+    endpoints:
+      - id: rest-v1
+        name: REST API v1
+        type: http
+        method: GET
+        path: /api/v1/**
+        description: "Routes REST requests to downstream services"
+      - id: graphql-ep
+        name: GraphQL
+        type: graphql
+        path: /graphql
+        description: "Aggregated GraphQL gateway for the web client"
+      - id: ws-ep
+        name: WebSocket
+        type: websocket
+        path: /ws
+        description: "Persistent connection for real-time order/delivery updates"
+
+  # ── shape: service (default) ─────────────────────────────────────────────────
+  - id: user-service
+    name: User Service
+    shape: service
+    color: "#2563EB"
+    description: "Owns user profiles, authentication, and session management."
+    endpoints:
+      - id: get-user
+        name: GetUser
+        type: grpc
+        path: /user.UserService/GetUser
+        description: "Returns user by ID"
+      - id: create-user
+        name: CreateUser
+        type: grpc
+        path: /user.UserService/CreateUser
+        description: "Registers a new user account"
+      - id: authenticate
+        name: Authenticate
+        type: grpc
+        path: /user.UserService/Authenticate
+        description: "Validates credentials and returns a JWT"
+    events:
+      - id: user-created-evt
+        name: UserCreated
+        type: publish
+        topic: user.events.created
+        description: "Emitted after successful registration"
+      - id: user-updated-evt
+        name: UserUpdated
+        type: publish
+        topic: user.events.updated
+
+  - id: order-service
+    name: Order Service
+    shape: service
+    color: "#059669"
+    description: "Manages the order lifecycle from creation to fulfilment."
+    endpoints:
+      - id: create-order
+        name: CreateOrder
+        type: grpc
+        path: /order.OrderService/CreateOrder
+      - id: get-order
+        name: GetOrder
+        type: grpc
+        path: /order.OrderService/GetOrder
+      - id: list-orders-http
+        name: ListOrders
+        type: http
+        method: GET
+        path: /orders
+        description: "Paginated order list exposed via REST (used by BFF)"
+    async_tasks:
+      - id: payment-result-consumer
+        name: PaymentResultConsumer
+        type: kafka_consumer
+        topic: payments.results
+        description: "Marks orders paid/failed when payment events arrive"
+      - id: inventory-check
+        name: InventoryCheckWorker
+        type: worker
+        queue: order.inventory-check
+        description: "Validates stock levels before confirming an order"
+    events:
+      - id: order-created-evt
+        name: OrderCreated
+        type: publish
+        topic: orders.created
+      - id: order-completed-evt
+        name: OrderCompleted
+        type: publish
+        topic: orders.completed
+
+  - id: payment-service
+    name: Payment Service
+    shape: service
+    color: "#DC2626"
+    description: "Charges cards via Stripe, handles refunds, and emits payment events."
+    endpoints:
+      - id: charge-ep
+        name: ChargePayment
+        type: grpc
+        path: /payment.PaymentService/Charge
+      - id: refund-ep
+        name: RefundPayment
+        type: grpc
+        path: /payment.PaymentService/Refund
+    async_tasks:
+      - id: order-consumer
+        name: NewOrderConsumer
+        type: kafka_consumer
+        topic: orders.created
+        description: "Initiates payment when a new order is received"
+      - id: stripe-webhook-worker
+        name: StripeWebhookWorker
+        type: worker
+        queue: payment.webhooks
+        description: "Processes Stripe webhook callbacks (charge.succeeded, etc.)"
+      - id: reconciliation-cron
+        name: DailyReconciliation
+        type: cron
+        schedule: "0 3 * * *"
+        description: "Reconciles local payment records with Stripe settlement reports"
+    events:
+      - id: payment-succeeded-evt
+        name: PaymentSucceeded
+        type: publish
+        topic: payments.results
+      - id: payment-failed-evt
+        name: PaymentFailed
+        type: publish
+        topic: payments.results
+
+  - id: notification-service
+    name: Notification Service
+    shape: service
+    color: "#D97706"
+    description: "Delivers transactional emails, SMS, and push notifications."
+    async_tasks:
+      - id: email-consumer
+        name: EmailSender
+        type: kafka_consumer
+        topic: notifications.email
+        description: "Sends transactional emails via SendGrid"
+      - id: sms-consumer
+        name: SmsSender
+        type: amqp_consumer
+        queue: notifications.sms
+        description: "Sends SMS via Twilio"
+      - id: push-producer
+        name: PushNotificationProducer
+        type: amqp_producer
+        queue: notifications.push
+        description: "Publishes push notification tasks"
+      - id: cleanup-cron
+        name: CleanupOldNotifications
+        type: cron
+        schedule: "0 2 * * *"
+        description: "Purges notification records older than 90 days"
+
+  - id: search-service
+    name: Search Service
+    shape: service
+    color: "#0891B2"
+    description: "Full-text product search powered by Elasticsearch."
+    endpoints:
+      - id: search-ep
+        name: Search
+        type: graphql
+        path: /graphql
+        description: "GraphQL resolver for product search queries"
+    async_tasks:
+      - id: product-indexer
+        name: ProductIndexer
+        type: kafka_consumer
+        topic: catalog.product-updated
+        description: "Re-indexes changed products in Elasticsearch"
+
+  # ── shape: database ──────────────────────────────────────────────────────────
+  - id: postgres
+    name: PostgreSQL
+    shape: database
+    color: "#336791"
+    description: "Primary relational store. Three logical databases (users, orders, payments)."
+    endpoints:
+      - id: users-db
+        name: users DB
+        type: http
+        description: "User accounts, sessions, preferences"
+      - id: orders-db
+        name: orders DB
+        type: http
+        description: "Orders, line-items, fulfilment states"
+      - id: payments-db
+        name: payments DB
+        type: http
+        description: "Payment records and reconciliation logs"
+
+  - id: elasticsearch
+    name: Elasticsearch
+    shape: database
+    color: "#F5A623"
+    description: "Product catalogue search index."
+
+  # ── shape: cache ─────────────────────────────────────────────────────────────
+  - id: redis
+    name: Redis
+    shape: cache
+    color: "#DC382D"
+    description: "Session tokens, rate-limit counters, and API response caching."
+
+  # ── shape: queue ─────────────────────────────────────────────────────────────
+  - id: kafka
+    name: Kafka
+    shape: queue
+    color: "#231F20"
+    description: "Central event bus. Topics: orders.*, payments.*, notifications.*, catalog.*"
+
+  - id: rabbitmq
+    name: RabbitMQ
+    shape: queue
+    color: "#FF6600"
+    description: "Task queues for SMS dispatch and push notifications."
+
+  # ── shape: external ──────────────────────────────────────────────────────────
+  - id: stripe
+    name: Stripe
+    shape: external
+    color: "#6772E5"
+    description: "Payment processing — charges, refunds, and webhook events."
+    endpoints:
+      - id: stripe-charge
+        name: POST /v1/charges
+        type: http
+        method: POST
+        path: /v1/charges
+      - id: stripe-refund
+        name: POST /v1/refunds
+        type: http
+        method: POST
+        path: /v1/refunds
+
+  - id: sendgrid
+    name: SendGrid
+    shape: external
+    color: "#1A82E2"
+    description: "Transactional email delivery."
+    endpoints:
+      - id: send-email
+        name: POST /v3/mail/send
+        type: http
+        method: POST
+        path: /v3/mail/send
+
+  - id: twilio
+    name: Twilio
+    shape: external
+    color: "#F22F46"
+    description: "SMS and voice delivery."
+    endpoints:
+      - id: send-sms
+        name: POST /Messages
+        type: http
+        method: POST
+        path: /2010-04-01/Accounts/{SID}/Messages.json
+
+interactions:
+
+  # ── Gateway → services ──────────────────────────────────────────────────────
+  - id: gw-authenticate
+    from: api-gateway.rest-v1
+    to: user-service.authenticate
+    type: grpc
+    label: Authenticate
+
+  - id: gw-graphql-search
+    from: api-gateway.graphql-ep
+    to: search-service.search-ep
+    type: graphql
+    label: ProductSearch
+
+  - id: gw-create-order
+    from: api-gateway.rest-v1
+    to: order-service.create-order
+    type: grpc
+    label: CreateOrder
+
+  - id: gw-ws-push
+    from: api-gateway.ws-ep
+    to: notification-service
+    type: websocket
+    label: Real-time push
+    async: true
+
+  - id: gw-redis-ratelimit
+    from: api-gateway
+    to: redis
+    type: redis
+    label: rate-limit counters
+
+  # ── User Service ─────────────────────────────────────────────────────────────
+  - id: user-postgres
+    from: user-service
+    to: postgres.users-db
+    type: database
+    label: CRUD users
+    metadata:
+      orm: gorm
+      pool_size: 10
+
+  - id: user-redis-session
+    from: user-service
+    to: redis
+    type: redis
+    label: session tokens
+
+  - id: user-kafka-created
+    from: user-service.user-created-evt
+    to: kafka
+    type: kafka
+    label: user.events.created
+    async: true
+
+  # ── Order Service ─────────────────────────────────────────────────────────────
+  - id: order-user-lookup
+    from: order-service.create-order
+    to: user-service.get-user
+    type: grpc
+    label: GetUser (validate)
+
+  - id: order-postgres
+    from: order-service
+    to: postgres.orders-db
+    type: database
+    label: CRUD orders
+
+  - id: order-kafka-created
+    from: order-service.order-created-evt
+    to: kafka
+    type: kafka
+    label: orders.created
+    async: true
+
+  - id: kafka-payment-consumer
+    from: kafka
+    to: payment-service.order-consumer
+    type: kafka
+    label: orders.created
+    async: true
+
+  - id: kafka-order-payment-result
+    from: kafka
+    to: order-service.payment-result-consumer
+    type: kafka
+    label: payments.results
+    async: true
+
+  # ── Payment Service ───────────────────────────────────────────────────────────
+  - id: payment-stripe-charge
+    from: payment-service.charge-ep
+    to: stripe.stripe-charge
+    type: http
+    label: POST /v1/charges
+    metadata:
+      sla_ms: 3000
+      circuit_breaker: true
+      retry: 3
+
+  - id: payment-stripe-refund
+    from: payment-service.refund-ep
+    to: stripe.stripe-refund
+    type: http
+    label: POST /v1/refunds
+
+  - id: payment-postgres
+    from: payment-service
+    to: postgres.payments-db
+    type: database
+    label: CRUD payments
+
+  - id: payment-kafka-result
+    from: payment-service.payment-succeeded-evt
+    to: kafka
+    type: kafka
+    label: payments.results
+    async: true
+
+  - id: payment-rabbitmq-sms
+    from: payment-service
+    to: rabbitmq
+    type: amqp
+    label: notifications.sms
+    async: true
+    description: "Sends SMS receipt via RabbitMQ after successful charge"
+
+  # ── Notification Service ──────────────────────────────────────────────────────
+  - id: kafka-notification-email
+    from: kafka
+    to: notification-service.email-consumer
+    type: kafka
+    label: notifications.email
+    async: true
+
+  - id: rabbitmq-notification-sms
+    from: rabbitmq
+    to: notification-service.sms-consumer
+    type: amqp
+    label: notifications.sms
+    async: true
+
+  - id: notification-sendgrid
+    from: notification-service.email-consumer
+    to: sendgrid.send-email
+    type: http
+    label: POST /v3/mail/send
+
+  - id: notification-twilio
+    from: notification-service.sms-consumer
+    to: twilio.send-sms
+    type: http
+    label: POST /Messages
+
+  # ── Search Service ────────────────────────────────────────────────────────────
+  - id: search-elasticsearch
+    from: search-service
+    to: elasticsearch
+    type: database
+    label: index / query
+
+  - id: catalog-kafka-search
+    from: kafka
+    to: search-service.product-indexer
+    type: kafka
+    label: catalog.product-updated
+    async: true

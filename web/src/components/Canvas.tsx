@@ -1,0 +1,131 @@
+import { useCallback } from 'react'
+import {
+  ReactFlow,
+  Background,
+  Controls,
+  MiniMap,
+  Panel,
+  NodeTypes,
+  EdgeTypes,
+  Connection,
+  MarkerType,
+} from '@xyflow/react'
+import '@xyflow/react/dist/style.css'
+
+import ServiceNode from './ServiceNode'
+import InteractionEdge from './InteractionEdge'
+import { useGraphStore } from '../store/graph'
+import { INTERACTION_STYLES } from '../lib/interactionStyles'
+import { Interaction } from '../types/schema'
+
+const nodeTypes: NodeTypes = { service: ServiceNode as never }
+const edgeTypes: EdgeTypes = { interaction: InteractionEdge as never }
+
+function Legend() {
+  return (
+    <div className="bg-white border border-gray-200 rounded-xl shadow p-3 text-xs">
+      <div className="font-semibold text-gray-700 mb-2">Interaction Types</div>
+      <div className="space-y-1">
+        {Object.entries(INTERACTION_STYLES).map(([type, style]) => (
+          <div key={type} className="flex items-center gap-2">
+            <svg width="32" height="8">
+              <line
+                x1="0" y1="4" x2="32" y2="4"
+                stroke={style.color}
+                strokeWidth="2"
+                strokeDasharray={style.strokeDasharray ?? undefined}
+              />
+            </svg>
+            <span className="text-gray-600">{style.label}</span>
+          </div>
+        ))}
+      </div>
+      <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-0.5 bg-green-500" />
+          <span className="text-gray-600">Callee (outgoing)</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-8 h-0.5 bg-blue-500" />
+          <span className="text-gray-600">Caller (incoming)</span>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+export default function Canvas() {
+  const {
+    nodes,
+    edges,
+    onNodesChange,
+    onEdgesChange,
+    addInteraction,
+    clearSelection,
+    config,
+  } = useGraphStore()
+
+  const onConnect = useCallback(
+    (connection: Connection) => {
+      const fromSvcId = connection.source ?? ''
+      const toSvcId = connection.target ?? ''
+      const fromHandle = connection.sourceHandle ?? 'default-src'
+      const toHandle = connection.targetHandle ?? 'default-tgt'
+
+      const fromMember = fromHandle.replace('-src', '')
+      const toMember = toHandle.replace('-tgt', '')
+
+      const fromRef = fromMember && fromMember !== 'default'
+        ? `${fromSvcId}.${fromMember}`
+        : fromSvcId
+      const toRef = toMember && toMember !== 'default'
+        ? `${toSvcId}.${toMember}`
+        : toSvcId
+
+      const ix: Interaction = {
+        id: `ix-${Date.now()}`,
+        from: fromRef,
+        to: toRef,
+        type: 'http',
+        label: '',
+      }
+      addInteraction(ix)
+    },
+    [addInteraction],
+  )
+
+  return (
+    <ReactFlow
+      nodes={nodes}
+      edges={edges}
+      nodeTypes={nodeTypes}
+      edgeTypes={edgeTypes}
+      onNodesChange={onNodesChange}
+      onEdgesChange={onEdgesChange}
+      onConnect={onConnect}
+      onPaneClick={clearSelection}
+      fitView
+      fitViewOptions={{ padding: 0.2 }}
+      minZoom={0.1}
+      maxZoom={2}
+      defaultEdgeOptions={{
+        type: 'interaction',
+        markerEnd: { type: MarkerType.ArrowClosed },
+      }}
+      proOptions={{ hideAttribution: true }}
+    >
+      <Background gap={20} size={1} color="#e5e7eb" />
+      <Controls showInteractive={false} />
+      <MiniMap
+        nodeColor={(n) => {
+          const svc = config.services.find((s) => s.id === n.id)
+          return svc?.color ?? '#CBD5E1'
+        }}
+        maskColor="rgba(255,255,255,0.7)"
+      />
+      <Panel position="bottom-left">
+        <Legend />
+      </Panel>
+    </ReactFlow>
+  )
+}

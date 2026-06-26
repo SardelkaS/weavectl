@@ -1,0 +1,62 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+/* React Flow overrides */
+.react-flow__node {
+  cursor: default;
+}
+
+.react-flow__handle {
+  opacity: 0;
+  transition: opacity 0.15s;
+}
+
+.react-flow__node:hover .react-flow__handle,
+.react-flow__handle:hover {
+  opacity: 1;
+}
+
+/* Always show default handles */
+.react-flow__handle[data-id="default-src"],
+.react-flow__handle[data-id="default-tgt"] {
+  opacity: 0.5;
+}
+
+.react-flow__node:hover .react-flow__handle[data-id="default-src"],
+.react-flow__node:hover .react-flow__handle[data-id="default-tgt"] {
+  opacity: 1;
+}
+
+/* Smooth edge animations */
+.react-flow__edge-path {
+  transition: stroke-width 0.15s, opacity 0.15s;
+}
+
+/* Scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d1d5db;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #9ca3af;
+}
