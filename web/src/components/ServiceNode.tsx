@@ -3,8 +3,9 @@ import { Handle, Position, NodeProps, Node } from '@xyflow/react'
 import {
   ChevronDown, ChevronRight, Globe, Zap, Radio, Settings,
   Server, Database, MessageSquare, Shield, Link, Layers, LucideIcon,
+  ArrowRight, ArrowLeft,
 } from 'lucide-react'
-import { Service, ServiceShape } from '../types/schema'
+import { Service, ServiceShape, Interaction } from '../types/schema'
 import { useGraphStore, useNodeHighlight } from '../store/graph'
 import {
   ENDPOINT_TYPE_COLORS,
@@ -12,7 +13,7 @@ import {
   EVENT_TYPE_COLORS,
 } from '../lib/interactionStyles'
 
-export type ServiceNodeData = { service: Service } & Record<string, unknown>
+export type ServiceNodeData = { service: Service; serviceInteractions: Interaction[] } & Record<string, unknown>
 export type ServiceNodeType = Node<ServiceNodeData, 'service'>
 
 // ─── Shape definitions ────────────────────────────────────────────────────────
@@ -120,7 +121,7 @@ function TaskRow({ svcId, id, name, type }: { svcId: string; id: string; name: s
         ${isSelected ? 'bg-orange-100 ring-1 ring-orange-400' : 'hover:bg-gray-100'}`}
       onClick={(e) => {
         e.stopPropagation()
-        selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'async_task' })
+        selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'async' })
       }}
     >
       <Handle type="target" position={Position.Left} id={`${id}-tgt`}
@@ -181,6 +182,37 @@ function Section({ label, icon, count, children }: {
   )
 }
 
+// ─── Internal process rows (service-level interactions) ───────────────────────
+
+function InternalSection({ serviceId, interactions }: { serviceId: string; interactions: Interaction[] }) {
+  const services = useGraphStore((s) => s.config.services)
+  if (interactions.length === 0) return null
+
+  const nameOf = (id: string) => services.find((s) => s.id === id)?.name ?? id
+
+  return (
+    <div className="mx-1 mb-1 rounded-lg border border-dashed border-gray-300 bg-gray-50 overflow-hidden">
+      <div className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-100 border-b border-dashed border-gray-300">
+        <Settings size={9} />
+        Internal
+      </div>
+      {interactions.map((ix) => {
+        const isOut = ix.from === serviceId
+        const otherId = isOut ? ix.to : ix.from
+        return (
+          <div key={ix.id} className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-gray-500">
+            {isOut
+              ? <ArrowRight size={10} className="text-indigo-400 shrink-0" />
+              : <ArrowLeft size={10} className="text-orange-400 shrink-0" />}
+            <span className="font-medium text-gray-600 truncate">{nameOf(otherId)}</span>
+            {ix.label && <span className="text-gray-400 truncate">· {ix.label}</span>}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
+
 // ─── Database cylinder decoration ─────────────────────────────────────────────
 
 function DbTop({ color }: { color: string }) {
@@ -194,7 +226,7 @@ function DbTop({ color }: { color: string }) {
 // ─── Main node component ──────────────────────────────────────────────────────
 
 export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
-  const { service } = data
+  const { service, serviceInteractions } = data
   const shape: ServiceShape = service.shape ?? 'service'
   const shapeDef = SHAPE_DEFS[shape] ?? SHAPE_DEFS.service
   const { Icon } = shapeDef
@@ -245,6 +277,9 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
         </span>
       </div>
 
+      {/* Internal process rows (service-level interactions) — always on top */}
+      <InternalSection serviceId={service.id} interactions={serviceInteractions ?? []} />
+
       {/* Members */}
       <div className="px-1 pb-2 pt-1">
         <Section label="Endpoints" icon={<Globe size={10} />} count={service.endpoints?.length ?? 0}>
@@ -252,8 +287,8 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
             <EndpointRow key={ep.id} svcId={service.id} id={ep.id} name={ep.name} type={ep.type} />
           ))}
         </Section>
-        <Section label="Async Tasks" icon={<Layers size={10} />} count={service.async_tasks?.length ?? 0}>
-          {service.async_tasks?.map((t) => (
+        <Section label="Async" icon={<Layers size={10} />} count={service.async?.length ?? 0}>
+          {service.async?.map((t) => (
             <TaskRow key={t.id} svcId={service.id} id={t.id} name={t.name} type={t.type} />
           ))}
         </Section>
@@ -262,7 +297,7 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
             <EventRow key={ev.id} svcId={service.id} id={ev.id} name={ev.name} type={ev.type} />
           ))}
         </Section>
-        {(!service.endpoints?.length && !service.async_tasks?.length && !service.events?.length) && (
+        {(!service.endpoints?.length && !service.async?.length && !service.events?.length) && (
           <div className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400">
             <Settings size={10} />
             <span>No members — click Edit to add</span>

@@ -55,8 +55,8 @@ services:
         path: /api/v1/...  # URL path or gRPC fully-qualified method path
         description: string
 
-    # --- Asynchronous workers ---
-    async_tasks:
+    # --- Asynchronous workers / background tasks ---
+    async:
       - id: string
         name: string
         # type values:
@@ -66,6 +66,7 @@ services:
         #   amqp_producer    — publishes to RabbitMQ / AMQP exchange
         #   cron             — time-based scheduled job
         #   worker           — generic background worker / job queue consumer
+        #   task             — generic one-off or ad-hoc background task
         type: kafka_consumer
         topic: some.kafka.topic     # kafka_* types
         queue: queue-name           # amqp_* and worker types
@@ -84,7 +85,7 @@ interactions:
   - id: string             # unique kebab-case identifier  (REQUIRED)
 
     # Address format: "serviceId"  OR  "serviceId.memberId"
-    # memberId is the id of an endpoint, async_task, or event.
+    # memberId is the id of an endpoint, async task, or event.
     from: source-service-id.endpoint-or-task-id
     to:   target-service-id.endpoint-or-task-id
 

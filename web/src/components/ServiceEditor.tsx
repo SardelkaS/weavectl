@@ -9,7 +9,7 @@ const ALL_SHAPES: ServiceShape[] = ['service', 'database', 'queue', 'gateway', '
 
 const ENDPOINT_TYPES: EndpointType[] = ['http', 'grpc', 'graphql', 'websocket']
 const TASK_TYPES: AsyncTaskType[] = [
-  'kafka_consumer', 'kafka_producer', 'amqp_consumer', 'amqp_producer', 'cron', 'worker',
+  'kafka_consumer', 'kafka_producer', 'amqp_consumer', 'amqp_producer', 'cron', 'worker', 'task',
 ]
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
 
@@ -256,8 +256,8 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
   }
 
   function addTask() {
-    const id = slug(`task-${(svc!.async_tasks?.length ?? 0) + 1}`)
-    patch({ async_tasks: [...(svc!.async_tasks ?? []), { id, name: 'NewTask', type: 'kafka_consumer' }] })
+    const id = slug(`task-${(svc!.async?.length ?? 0) + 1}`)
+    patch({ async: [...(svc!.async ?? []), { id, name: 'NewTask', type: 'kafka_consumer' }] })
   }
 
   function addEvent() {
@@ -365,10 +365,10 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
         </div>
       </div>
 
-      {/* Async Tasks */}
+      {/* Async */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Async Tasks</span>
+          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Async</span>
           <button
             className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-800"
             onClick={addTask}
@@ -377,16 +377,16 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
           </button>
         </div>
         <div className="space-y-1.5">
-          {svc.async_tasks?.map((task, i) => (
+          {svc.async?.map((task, i) => (
             <TaskForm
               key={task.id}
               task={task}
               onChange={(p) => {
-                const async_tasks = [...(svc.async_tasks ?? [])]
-                async_tasks[i] = { ...task, ...p }
-                patch({ async_tasks })
+                const updated = [...(svc.async ?? [])]
+                updated[i] = { ...task, ...p }
+                patch({ async: updated })
               }}
-              onDelete={() => patch({ async_tasks: svc.async_tasks?.filter((_, j) => j !== i) })}
+              onDelete={() => patch({ async: svc.async?.filter((_, j) => j !== i) })}
             />
           ))}
         </div>

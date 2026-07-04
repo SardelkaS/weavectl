@@ -22,7 +22,7 @@ type Service struct {
 	Tags        []string    `json:"tags,omitempty"        yaml:"tags,omitempty"`
 	Position    Position    `json:"position,omitempty"    yaml:"position,omitempty"`
 	Endpoints   []Endpoint  `json:"endpoints,omitempty"   yaml:"endpoints,omitempty"`
-	AsyncTasks  []AsyncTask `json:"async_tasks,omitempty" yaml:"async_tasks,omitempty"`
+	Async       []AsyncTask `json:"async,omitempty"       yaml:"async,omitempty"`
 	Events      []Event     `json:"events,omitempty"      yaml:"events,omitempty"`
 }
 
@@ -44,7 +44,7 @@ type Endpoint struct {
 type AsyncTask struct {
 	ID          string   `json:"id"                    yaml:"id"`
 	Name        string   `json:"name"                  yaml:"name"`
-	Type        string   `json:"type"                  yaml:"type"` // kafka_consumer | kafka_producer | cron | worker | amqp_consumer | amqp_producer
+	Type        string   `json:"type"                  yaml:"type"` // kafka_consumer | kafka_producer | cron | worker | amqp_consumer | amqp_producer | task
 	Topic       string   `json:"topic,omitempty"       yaml:"topic,omitempty"`
 	Queue       string   `json:"queue,omitempty"       yaml:"queue,omitempty"`
 	Schedule    string   `json:"schedule,omitempty"    yaml:"schedule,omitempty"`

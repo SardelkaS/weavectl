@@ -53,7 +53,7 @@ function MemberSelect({
                 ↳ {ep.name} [{ep.type}]
               </option>
             ))}
-            {svc.async_tasks?.map((t) => (
+            {svc.async?.map((t) => (
               <option key={t.id} value={`${svc.id}.${t.id}`}>
                 ↳ {t.name} [{t.type}]
               </option>

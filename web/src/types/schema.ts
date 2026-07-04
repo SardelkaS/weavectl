@@ -6,6 +6,7 @@ export type AsyncTaskType =
   | 'worker'
   | 'amqp_consumer'
   | 'amqp_producer'
+  | 'task'
 export type EventType = 'publish' | 'subscribe'
 export type InteractionType =
   | 'http'
@@ -63,7 +64,7 @@ export interface Service {
   tags?: string[]
   position?: Position
   endpoints?: Endpoint[]
-  async_tasks?: AsyncTask[]
+  async?: AsyncTask[]
   events?: Event[]
 }
 
@@ -91,5 +92,5 @@ export interface Config {
 export interface SelectedMember {
   serviceId: string
   memberId: string
-  memberType: 'endpoint' | 'async_task' | 'event'
+  memberType: 'endpoint' | 'async' | 'event'
 }

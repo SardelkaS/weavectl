@@ -1,4 +1,5 @@
 import { Config, SelectedMember } from '../types/schema'
+import { isServiceLevel } from './serializer'
 
 export interface TraceResult {
   /** Interaction IDs that are reachable from the selected member (callees) */
@@ -33,9 +34,9 @@ export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult
     forwardVisited.add(ref)
 
     for (const ix of cfg.interactions) {
+      if (isServiceLevel(ix)) continue
       const fromSvc = serviceIdOf(ix.from)
       const fromMatches = ix.from === ref || ix.from.startsWith(ref + '.')
-        || (serviceIdOf(startRef) === fromSvc && ref === fromSvc) // service-level match
       if (fromMatches) {
         calleeInteractionIds.add(ix.id)
         const toSvc = serviceIdOf(ix.to)
@@ -56,9 +57,9 @@ export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult
     backwardVisited.add(ref)
 
     for (const ix of cfg.interactions) {
+      if (isServiceLevel(ix)) continue
       const toSvc = serviceIdOf(ix.to)
       const toMatches = ix.to === ref || ix.to.startsWith(ref + '.')
-        || (serviceIdOf(startRef) === toSvc && ref === toSvc)
       if (toMatches) {
         callerInteractionIds.add(ix.id)
         const fromSvc = serviceIdOf(ix.from)

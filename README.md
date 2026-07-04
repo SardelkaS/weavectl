@@ -423,42 +423,6 @@ Set `async: true` on interactions that are fire-and-forget (Kafka, AMQP) — thi
 
 ---
 
-## AI Generation
-
-weavectl includes a prompt builder that creates a precise, schema-aware prompt for any AI assistant to generate a config from a natural-language architecture description.
-
-### Using with any AI (no API key needed)
-
-1. Click **AI Generate** in the toolbar
-2. Describe your architecture in plain text, e.g.:
-   > *An e-commerce platform with an API Gateway (REST), Order Service (gRPC backend), Payment Service (Stripe integration via HTTP, results via Kafka), Notification Service (Kafka consumer, sends email/SMS), and a shared PostgreSQL database.*
-3. Click **Build prompt to copy**
-4. Paste the generated prompt into Claude, ChatGPT, or any other AI assistant
-5. Copy the JSON response
-6. In weavectl: **Import → Paste JSON / YAML** → paste → **Import**
-
-### Using with Claude API directly
-
-1. Click **AI Generate**
-2. Enter your architecture description
-3. Paste your Claude API key in the field provided (`sk-ant-...`)
-4. Click **Generate with Claude** — the graph is populated automatically
-
-The API key is used only for the single request and is never stored server-side.
-
-### AI prompt context
-
-The `ai_prompt` field in the config is included in every generation request as extra context. Use it to give the AI standing instructions about your tech stack:
-
-```yaml
-ai_prompt: |
-  This system uses Go microservices with gRPC internally.
-  All external APIs are REST. Kafka cluster is managed by Confluent Cloud.
-  Database is PostgreSQL with read replicas behind pgBouncer.
-```
-
----
-
 ## Development
 
 ### Running in dev mode

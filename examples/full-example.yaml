@@ -97,7 +97,7 @@ services:
         method: GET
         path: /orders
         description: "Paginated order list exposed via REST (used by BFF)"
-    async_tasks:
+    async:
       - id: payment-result-consumer
         name: PaymentResultConsumer
         type: kafka_consumer
@@ -132,7 +132,7 @@ services:
         name: RefundPayment
         type: grpc
         path: /payment.PaymentService/Refund
-    async_tasks:
+    async:
       - id: order-consumer
         name: NewOrderConsumer
         type: kafka_consumer
@@ -163,7 +163,7 @@ services:
     shape: service
     color: "#D97706"
     description: "Delivers transactional emails, SMS, and push notifications."
-    async_tasks:
+    async:
       - id: email-consumer
         name: EmailSender
         type: kafka_consumer
@@ -196,7 +196,7 @@ services:
         type: graphql
         path: /graphql
         description: "GraphQL resolver for product search queries"
-    async_tasks:
+    async:
       - id: product-indexer
         name: ProductIndexer
         type: kafka_consumer

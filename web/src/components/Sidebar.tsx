@@ -28,7 +28,7 @@ function ServiceItem({ svc }: { svc: Service }) {
         <div className="text-[10px] text-gray-400">
           {[
             svc.endpoints?.length ? `${svc.endpoints.length} endpoint${svc.endpoints.length > 1 ? 's' : ''}` : null,
-            svc.async_tasks?.length ? `${svc.async_tasks.length} task${svc.async_tasks.length > 1 ? 's' : ''}` : null,
+            svc.async?.length ? `${svc.async.length} async` : null,
             ixCount ? `${ixCount} interaction${ixCount > 1 ? 's' : ''}` : null,
           ].filter(Boolean).join(' · ') || 'No members'}
         </div>
@@ -45,7 +45,7 @@ export default function Sidebar() {
     if (!name?.trim()) return
     const id = slug(name)
     const color = SERVICE_COLORS[config.services.length % SERVICE_COLORS.length]
-    const newSvc: Service = { id, name: name.trim(), color, endpoints: [], async_tasks: [], events: [] }
+    const newSvc: Service = { id, name: name.trim(), color, endpoints: [], async: [], events: [] }
     addService(newSvc)
   }
 

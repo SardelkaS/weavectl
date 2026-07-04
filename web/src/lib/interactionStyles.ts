@@ -41,6 +41,7 @@ export const TASK_TYPE_COLORS: Record<string, string> = {
   amqp_producer:  '#FDE047',
   cron:           '#6B7280',
   worker:         '#9CA3AF',
+  task:           '#A78BFA',
 }
 
 export const EVENT_TYPE_COLORS: Record<string, string> = {
