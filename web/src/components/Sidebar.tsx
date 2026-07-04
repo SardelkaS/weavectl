@@ -1,9 +1,10 @@
-import { Plus } from 'lucide-react'
+import { Plus, Eye } from 'lucide-react'
 import { useGraphStore } from '../store/graph'
 import { Service } from '../types/schema'
 import { SERVICE_COLORS, INTERACTION_STYLES } from '../lib/interactionStyles'
 import ServiceEditor from './ServiceEditor'
 import InteractionEditor from './InteractionEditor'
+import MemberEditor from './MemberEditor'
 
 function slug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
@@ -38,7 +39,9 @@ function ServiceItem({ svc }: { svc: Service }) {
 }
 
 export default function Sidebar() {
-  const { config, addService, selectedServiceId, selectedInteractionId, selectedMember } = useGraphStore()
+  const {
+    config, addService, selectedServiceId, selectedInteractionId, selectedMember, viewMode,
+  } = useGraphStore()
 
   function handleAddService() {
     const name = prompt('Service name:')
@@ -49,27 +52,24 @@ export default function Sidebar() {
     addService(newSvc)
   }
 
-  const showEditor = selectedServiceId || selectedInteractionId
+  const hasSelection = Boolean(selectedServiceId || selectedInteractionId || selectedMember)
+  const showEditor = !viewMode && hasSelection
 
   return (
     <aside className="w-72 shrink-0 bg-white border-r border-gray-200 flex flex-col h-full overflow-hidden">
-      {/* Trace info banner */}
-      {selectedMember && (
-        <div className="bg-indigo-600 text-white px-3 py-2 text-xs">
-          <div className="font-semibold">Tracing call graph</div>
-          <div className="opacity-80">
-            {selectedMember.serviceId}.{selectedMember.memberId}
-          </div>
-          <div className="opacity-60 mt-0.5">
-            Green = callees · Blue = callers · Click member again to clear
-          </div>
+      {/* View mode banner */}
+      {viewMode && (
+        <div className="flex items-center gap-1.5 bg-gray-800 text-white px-3 py-1.5 text-xs">
+          <Eye size={12} />
+          <span>View-only mode — editing is disabled</span>
         </div>
       )}
 
       {showEditor ? (
         <div className="flex-1 overflow-y-auto p-3">
-          {selectedServiceId && <ServiceEditor serviceId={selectedServiceId} />}
-          {selectedInteractionId && <InteractionEditor interactionId={selectedInteractionId} />}
+          {selectedMember && <MemberEditor member={selectedMember} />}
+          {!selectedMember && selectedServiceId && <ServiceEditor serviceId={selectedServiceId} />}
+          {!selectedMember && selectedInteractionId && <InteractionEditor interactionId={selectedInteractionId} />}
         </div>
       ) : (
         <>

@@ -2,55 +2,17 @@ import { useState } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight, X } from 'lucide-react'
 import { Service, Endpoint, AsyncTask, Event, EndpointType, AsyncTaskType, ServiceShape } from '../types/schema'
 import { useGraphStore } from '../store/graph'
-import { SERVICE_COLORS, ENDPOINT_TYPE_COLORS, TASK_TYPE_COLORS } from '../lib/interactionStyles'
+import {
+  SERVICE_COLORS, ENDPOINT_TYPE_COLORS, TASK_TYPE_COLORS,
+  ENDPOINT_TYPES, TASK_TYPES, HTTP_METHODS,
+} from '../lib/interactionStyles'
 import { SHAPE_DEFS } from './ServiceNode'
+import { Field, Input, Textarea, Select } from './FormControls'
 
 const ALL_SHAPES: ServiceShape[] = ['service', 'database', 'queue', 'gateway', 'cache', 'external']
 
-const ENDPOINT_TYPES: EndpointType[] = ['http', 'grpc', 'graphql', 'websocket']
-const TASK_TYPES: AsyncTaskType[] = [
-  'kafka_consumer', 'kafka_producer', 'amqp_consumer', 'amqp_producer', 'cron', 'worker', 'task',
-]
-const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']
-
 function slug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-0.5">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className={`w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 ${props.className ?? ''}`}
-    />
-  )
-}
-
-function Textarea(props: React.TextareaHTMLAttributes<HTMLTextAreaElement>) {
-  return (
-    <textarea
-      {...props}
-      className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
-    />
-  )
-}
-
-function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-    />
-  )
 }
 
 function EndpointForm({

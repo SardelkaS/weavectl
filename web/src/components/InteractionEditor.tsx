@@ -2,33 +2,7 @@ import { X, Trash2 } from 'lucide-react'
 import { Interaction, InteractionType } from '../types/schema'
 import { useGraphStore } from '../store/graph'
 import { INTERACTION_TYPES, INTERACTION_STYLES } from '../lib/interactionStyles'
-
-function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return (
-    <div>
-      <label className="block text-xs font-medium text-gray-500 mb-0.5">{label}</label>
-      {children}
-    </div>
-  )
-}
-
-function Input(props: React.InputHTMLAttributes<HTMLInputElement>) {
-  return (
-    <input
-      {...props}
-      className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-    />
-  )
-}
-
-function Select(props: React.SelectHTMLAttributes<HTMLSelectElement>) {
-  return (
-    <select
-      {...props}
-      className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400"
-    />
-  )
-}
+import { Field, Input, Textarea, Select } from './FormControls'
 
 function MemberSelect({
   value,
@@ -115,10 +89,9 @@ export default function InteractionEditor({ interactionId }: { interactionId: st
       </Field>
 
       <Field label="Description">
-        <textarea
+        <Textarea
           value={ix.description ?? ''}
           rows={2}
-          className="w-full border border-gray-200 rounded px-2 py-1 text-sm focus:outline-none focus:ring-1 focus:ring-indigo-400 resize-none"
           placeholder="Optional detailed description"
           onChange={(e) => patch({ description: e.target.value })}
         />

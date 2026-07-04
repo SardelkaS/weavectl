@@ -1,4 +1,4 @@
-import { InteractionType } from '../types/schema'
+import { InteractionType, EndpointType, AsyncTaskType } from '../types/schema'
 
 export interface EdgeStyle {
   color: string
@@ -48,3 +48,11 @@ export const EVENT_TYPE_COLORS: Record<string, string> = {
   publish:   '#22C55E',
   subscribe: '#86EFAC',
 }
+
+export const ENDPOINT_TYPES: EndpointType[] = ['http', 'grpc', 'graphql', 'websocket']
+
+export const TASK_TYPES: AsyncTaskType[] = [
+  'kafka_consumer', 'kafka_producer', 'amqp_consumer', 'amqp_producer', 'cron', 'worker', 'task',
+]
+
+export const HTTP_METHODS = ['GET', 'POST', 'PUT', 'PATCH', 'DELETE']

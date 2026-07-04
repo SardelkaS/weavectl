@@ -18,14 +18,23 @@ function serviceIdOf(ref: string): string {
   return ref.split('.')[0]
 }
 
-/** BFS over interactions starting from the selected member. */
+/**
+ * BFS over interactions starting from the selected member.
+ *
+ * Traversal only ever follows an exact "from"/"to" ref match — reaching a
+ * service through one of its members never fans out into that service's
+ * other, unrelated members. A call is only highlighted when it chains
+ * directly off the specific endpoint/task/event that was actually invoked;
+ * if that member has no further outgoing (or incoming) interactions, the
+ * trace stops there instead of sweeping in the rest of the service.
+ */
 export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult {
   const startRef = memberRef(selected.serviceId, selected.memberId)
   const calleeInteractionIds = new Set<string>()
   const callerInteractionIds = new Set<string>()
   const involvedServiceIds = new Set<string>([selected.serviceId])
 
-  // Forward BFS — what does the selected method call?
+  // Forward BFS — what does the selected member call, directly or transitively?
   const forwardQueue = [startRef]
   const forwardVisited = new Set<string>()
   while (forwardQueue.length > 0) {
@@ -35,20 +44,15 @@ export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult
 
     for (const ix of cfg.interactions) {
       if (isServiceLevel(ix)) continue
-      const fromSvc = serviceIdOf(ix.from)
-      const fromMatches = ix.from === ref || ix.from.startsWith(ref + '.')
-      if (fromMatches) {
-        calleeInteractionIds.add(ix.id)
-        const toSvc = serviceIdOf(ix.to)
-        involvedServiceIds.add(toSvc)
-        involvedServiceIds.add(fromSvc)
-        forwardQueue.push(ix.to)
-        forwardQueue.push(toSvc)
-      }
+      if (ix.from !== ref) continue
+      calleeInteractionIds.add(ix.id)
+      involvedServiceIds.add(serviceIdOf(ix.from))
+      involvedServiceIds.add(serviceIdOf(ix.to))
+      forwardQueue.push(ix.to)
     }
   }
 
-  // Backward BFS — what calls the selected method?
+  // Backward BFS — what calls the selected member, directly or transitively?
   const backwardQueue = [startRef]
   const backwardVisited = new Set<string>()
   while (backwardQueue.length > 0) {
@@ -58,16 +62,11 @@ export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult
 
     for (const ix of cfg.interactions) {
       if (isServiceLevel(ix)) continue
-      const toSvc = serviceIdOf(ix.to)
-      const toMatches = ix.to === ref || ix.to.startsWith(ref + '.')
-      if (toMatches) {
-        callerInteractionIds.add(ix.id)
-        const fromSvc = serviceIdOf(ix.from)
-        involvedServiceIds.add(fromSvc)
-        involvedServiceIds.add(toSvc)
-        backwardQueue.push(ix.from)
-        backwardQueue.push(fromSvc)
-      }
+      if (ix.to !== ref) continue
+      callerInteractionIds.add(ix.id)
+      involvedServiceIds.add(serviceIdOf(ix.from))
+      involvedServiceIds.add(serviceIdOf(ix.to))
+      backwardQueue.push(ix.from)
     }
   }
 

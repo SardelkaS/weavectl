@@ -27,6 +27,9 @@ interface GraphStore {
   selectedMember: SelectedMember | null
   trace: TraceResult | null
 
+  /** When true, selecting a graph element only highlights/traces it — the editor stays closed. */
+  viewMode: boolean
+
   loadConfig: (cfg: Config) => void
   onNodesChange: (changes: NodeChange<SNode>[]) => void
   onEdgesChange: (changes: EdgeChange<SEdge>[]) => void
@@ -35,6 +38,7 @@ interface GraphStore {
   selectInteraction: (id: string | null) => void
   selectMember: (member: SelectedMember | null) => void
   clearSelection: () => void
+  toggleViewMode: () => void
 
   addService: (svc: Service) => void
   updateService: (id: string, patch: Partial<Service>) => void
@@ -62,6 +66,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   selectedInteractionId: null,
   selectedMember: null,
   trace: null,
+  viewMode: false,
 
   loadConfig(cfg) {
     const { nodes, edges } = configToFlow(cfg)
@@ -104,11 +109,15 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       return
     }
     const trace = computeTrace(get().config, member)
-    set({ selectedMember: member, trace, selectedInteractionId: null })
+    set({ selectedMember: member, trace, selectedInteractionId: null, selectedServiceId: null })
   },
 
   clearSelection() {
     set({ selectedServiceId: null, selectedInteractionId: null, selectedMember: null, trace: null })
+  },
+
+  toggleViewMode() {
+    set((s) => ({ viewMode: !s.viewMode }))
   },
 
   addService(svc) {

@@ -7,10 +7,37 @@ import {
   Save,
   FileText,
   Clipboard,
+  Eye,
 } from 'lucide-react'
 import { useGraphStore } from '../store/graph'
 import AIPromptModal from './AIPromptModal'
 import yaml from 'js-yaml'
+
+function ViewModeSwitch() {
+  const { viewMode, toggleViewMode } = useGraphStore()
+  return (
+    <label
+      className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100 cursor-pointer select-none"
+      title="When on, selecting a graph element only highlights it — the editor won't open"
+    >
+      <Eye size={15} className={viewMode ? 'text-indigo-600' : ''} />
+      <span className="hidden sm:inline">View mode</span>
+      <span className="relative inline-flex h-5 w-9 shrink-0 items-center rounded-full">
+        <input
+          type="checkbox"
+          checked={viewMode}
+          onChange={toggleViewMode}
+          className="peer sr-only"
+        />
+        <span className="absolute inset-0 rounded-full bg-gray-300 peer-checked:bg-indigo-600 transition-colors" />
+        <span
+          className={`relative inline-block h-3.5 w-3.5 transform rounded-full bg-white shadow transition-transform
+            ${viewMode ? 'translate-x-4' : 'translate-x-1'}`}
+        />
+      </span>
+    </label>
+  )
+}
 
 export default function Toolbar() {
   const { config, loadConfig, autoLayout } = useGraphStore()
@@ -91,6 +118,11 @@ export default function Toolbar() {
 
         {/* Actions */}
         <div className="flex items-center gap-1.5">
+          {/* View mode */}
+          <ViewModeSwitch />
+
+          <div className="w-px h-5 bg-gray-200 mx-0.5" />
+
           {/* Auto layout */}
           <button
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-600 hover:bg-gray-100"
