@@ -60,9 +60,9 @@ export default function InteractionEditor({ interactionId }: { interactionId: st
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 rounded-full" style={{ background: style?.color }} />
-          <h3 className="font-semibold text-gray-800">Edit Interaction</h3>
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100">Edit Interaction</h3>
         </div>
-        <button className="text-gray-400 hover:text-gray-600" onClick={() => selectInteraction(null)}>
+        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300" onClick={() => selectInteraction(null)}>
           <X size={16} />
         </button>
       </div>
@@ -97,7 +97,7 @@ export default function InteractionEditor({ interactionId }: { interactionId: st
         />
       </Field>
 
-      <label className="flex items-center gap-2 text-sm text-gray-700 cursor-pointer">
+      <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-gray-200 cursor-pointer">
         <input
           type="checkbox"
           checked={ix.async ?? false}
@@ -107,9 +107,9 @@ export default function InteractionEditor({ interactionId }: { interactionId: st
         Asynchronous (fire-and-forget)
       </label>
 
-      <div className="pt-2 border-t border-gray-200">
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
         <button
-          className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
+          className="flex items-center gap-1 text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
           onClick={() => {
             removeInteraction(interactionId)
             selectInteraction(null)

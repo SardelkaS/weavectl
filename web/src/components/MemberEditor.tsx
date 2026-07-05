@@ -24,13 +24,13 @@ function EditorHeader({ color, badge, title, subtitle, onClose }: {
           >
             {badge}
           </span>
-          <h3 className="font-semibold text-gray-800 truncate">{title}</h3>
+          <h3 className="font-semibold text-gray-800 dark:text-gray-100 truncate">{title}</h3>
         </div>
-        <button className="text-gray-400 hover:text-gray-600 shrink-0" onClick={onClose}>
+        <button className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 shrink-0" onClick={onClose}>
           <X size={16} />
         </button>
       </div>
-      <div className="text-[11px] text-gray-400 truncate">{subtitle}</div>
+      <div className="text-[11px] text-gray-400 dark:text-gray-500 truncate">{subtitle}</div>
     </div>
   )
 }
@@ -97,8 +97,8 @@ function EndpointMemberEditor({ serviceId, ep, serviceName }: { serviceId: strin
         <Textarea value={ep.description ?? ''} rows={3} onChange={(e) => patch({ description: e.target.value })} />
       </Field>
 
-      <div className="pt-2 border-t border-gray-200">
-        <button className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700" onClick={remove}>
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <button className="flex items-center gap-1 text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" onClick={remove}>
           <Trash2 size={14} /> Delete Endpoint
         </button>
       </div>
@@ -163,8 +163,8 @@ function TaskMemberEditor({ serviceId, task, serviceName }: { serviceId: string;
         <Textarea value={task.description ?? ''} rows={3} onChange={(e) => patch({ description: e.target.value })} />
       </Field>
 
-      <div className="pt-2 border-t border-gray-200">
-        <button className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700" onClick={remove}>
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <button className="flex items-center gap-1 text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" onClick={remove}>
           <Trash2 size={14} /> Delete Task
         </button>
       </div>
@@ -216,8 +216,8 @@ function EventMemberEditor({ serviceId, ev, serviceName }: { serviceId: string; 
         <Textarea value={ev.description ?? ''} rows={3} onChange={(e) => patch({ description: e.target.value })} />
       </Field>
 
-      <div className="pt-2 border-t border-gray-200">
-        <button className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700" onClick={remove}>
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <button className="flex items-center gap-1 text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" onClick={remove}>
           <Trash2 size={14} /> Delete Event
         </button>
       </div>

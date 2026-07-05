@@ -17,10 +17,18 @@ import { InteractionEdgeData } from '../components/InteractionEdge'
 type SNode = Node<ServiceNodeData>
 type SEdge = Edge<InteractionEdgeData>
 
+const HISTORY_LIMIT = 50
+
 interface GraphStore {
   config: Config
   nodes: SNode[]
   edges: SEdge[]
+
+  /** Undo/redo history of past/future `config` snapshots. */
+  past: Config[]
+  future: Config[]
+  /** True while a node drag gesture is in progress, so intermediate frames coalesce into one history entry. */
+  dragActive: boolean
 
   selectedServiceId: string | null
   selectedInteractionId: string | null
@@ -49,6 +57,9 @@ interface GraphStore {
 
   autoLayout: () => void
   getConfig: () => Config
+
+  undo: () => void
+  redo: () => void
 }
 
 const EMPTY_CONFIG: Config = {
@@ -58,10 +69,38 @@ const EMPTY_CONFIG: Config = {
   interactions: [],
 }
 
+/** Snapshot the current config onto the undo stack and clear the redo stack. */
+function pushHistory(s: Pick<GraphStore, 'config' | 'past'>): Pick<GraphStore, 'past' | 'future'> {
+  return { past: [...s.past, s.config].slice(-HISTORY_LIMIT), future: [] }
+}
+
+// Rapid-fire edits sharing the same key within COALESCE_MS (e.g. every keystroke while
+// typing a field) collapse into a single undo step instead of one per keystroke.
+let lastCoalesceKey: string | null = null
+let lastCoalesceTime = 0
+const COALESCE_MS = 700
+
+function pushHistoryCoalesced(
+  s: Pick<GraphStore, 'config' | 'past'>,
+  key: string,
+): Partial<Pick<GraphStore, 'past' | 'future'>> {
+  const now = Date.now()
+  if (key === lastCoalesceKey && now - lastCoalesceTime < COALESCE_MS) {
+    lastCoalesceTime = now
+    return {}
+  }
+  lastCoalesceKey = key
+  lastCoalesceTime = now
+  return pushHistory(s)
+}
+
 export const useGraphStore = create<GraphStore>((set, get) => ({
   config: EMPTY_CONFIG,
   nodes: [],
   edges: [],
+  past: [],
+  future: [],
+  dragActive: false,
   selectedServiceId: null,
   selectedInteractionId: null,
   selectedMember: null,
@@ -72,10 +111,13 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     const { nodes, edges } = configToFlow(cfg)
     const allZero = nodes.every((n) => n.position.x === 0 && n.position.y === 0)
     const finalNodes = allZero && nodes.length > 1 ? applyDagreLayout(nodes, edges) : nodes
+    lastCoalesceKey = null
     set({
       config: cfg,
       nodes: finalNodes,
       edges,
+      past: [],
+      future: [],
       selectedMember: null,
       trace: null,
       selectedServiceId: null,
@@ -85,9 +127,20 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
   onNodesChange(changes) {
     set((s) => {
+      const hasRemove = changes.some((c) => c.type === 'remove')
+      const dragStart = changes.some((c) => c.type === 'position' && c.dragging === true) && !s.dragActive
+      const dragEnd = changes.some((c) => c.type === 'position' && c.dragging === false)
+
       const nodes = applyNodeChanges(changes, s.nodes) as SNode[]
       const config = flowToConfig(s.config, nodes, s.edges)
-      return { nodes, config }
+      const history = hasRemove || dragStart ? pushHistory(s) : {}
+
+      return {
+        nodes,
+        config,
+        dragActive: dragEnd ? false : dragStart ? true : s.dragActive,
+        ...history,
+      }
     })
   },
 
@@ -124,7 +177,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     set((s) => {
       const config = { ...s.config, services: [...s.config.services, svc] }
       const { nodes, edges } = configToFlow(config)
-      return { config, nodes, edges }
+      return { config, nodes, edges, ...pushHistory(s) }
     })
   },
 
@@ -137,7 +190,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
         const updated = services.find((sv) => sv.id === id)!
         return { ...n, data: { ...n.data, service: updated } }
       })
-      return { config, nodes }
+      return { config, nodes, ...pushHistoryCoalesced(s, `service:${id}`) }
     })
   },
 
@@ -149,7 +202,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       )
       const config = { ...s.config, services, interactions }
       const { nodes, edges } = configToFlow(config)
-      return { config, nodes, edges }
+      return { config, nodes, edges, ...pushHistory(s) }
     })
   },
 
@@ -158,7 +211,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       const interactions = [...s.config.interactions, ix]
       const config = { ...s.config, interactions }
       const { nodes, edges } = configToFlow(config)
-      return { config, nodes, edges }
+      return { config, nodes, edges, ...pushHistory(s) }
     })
   },
 
@@ -169,7 +222,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       )
       const config = { ...s.config, interactions }
       const { nodes, edges } = configToFlow(config)
-      return { config, nodes, edges }
+      return { config, nodes, edges, ...pushHistoryCoalesced(s, `interaction:${id}`) }
     })
   },
 
@@ -178,7 +231,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
       const interactions = s.config.interactions.filter((ix) => ix.id !== id)
       const config = { ...s.config, interactions }
       const { nodes, edges } = configToFlow(config)
-      return { config, nodes, edges }
+      return { config, nodes, edges, ...pushHistory(s) }
     })
   },
 
@@ -186,12 +239,52 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
     set((s) => {
       const nodes = applyDagreLayout(s.nodes, s.edges)
       const config = flowToConfig(s.config, nodes, s.edges)
-      return { nodes, config }
+      return { nodes, config, ...pushHistory(s) }
     })
   },
 
   getConfig() {
     return get().config
+  },
+
+  undo() {
+    lastCoalesceKey = null
+    set((s) => {
+      if (s.past.length === 0) return {}
+      const previous = s.past[s.past.length - 1]
+      const { nodes, edges } = configToFlow(previous)
+      return {
+        config: previous,
+        nodes,
+        edges,
+        past: s.past.slice(0, -1),
+        future: [s.config, ...s.future].slice(0, HISTORY_LIMIT),
+        selectedServiceId: null,
+        selectedInteractionId: null,
+        selectedMember: null,
+        trace: null,
+      }
+    })
+  },
+
+  redo() {
+    lastCoalesceKey = null
+    set((s) => {
+      if (s.future.length === 0) return {}
+      const next = s.future[0]
+      const { nodes, edges } = configToFlow(next)
+      return {
+        config: next,
+        nodes,
+        edges,
+        past: [...s.past, s.config].slice(-HISTORY_LIMIT),
+        future: s.future.slice(1),
+        selectedServiceId: null,
+        selectedInteractionId: null,
+        selectedMember: null,
+        trace: null,
+      }
+    })
   },
 }))
 

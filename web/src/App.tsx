@@ -16,7 +16,7 @@ export default function App() {
   }, [loadConfig])
 
   return (
-    <div className="flex flex-col h-screen bg-gray-50">
+    <div className="flex flex-col h-screen bg-gray-50 dark:bg-gray-900">
       <Toolbar />
       <div className="flex flex-1 min-h-0">
         <Sidebar />

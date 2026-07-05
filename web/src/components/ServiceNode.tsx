@@ -38,7 +38,7 @@ export const SHAPE_DEFS: Record<ServiceShape, ShapeDef> = {
     rounded: 'rounded-xl',
     borderStyle: 'solid',
     borderWidth: 'border-2',
-    chipClass: 'bg-blue-100 text-blue-700',
+    chipClass: 'bg-blue-100 dark:bg-blue-900/50 text-blue-700 dark:text-blue-300',
   },
   database: {
     label: 'Database',
@@ -46,7 +46,7 @@ export const SHAPE_DEFS: Record<ServiceShape, ShapeDef> = {
     rounded: 'rounded-sm',
     borderStyle: 'solid',
     borderWidth: 'border-2',
-    chipClass: 'bg-emerald-100 text-emerald-700',
+    chipClass: 'bg-emerald-100 dark:bg-emerald-900/50 text-emerald-700 dark:text-emerald-300',
   },
   queue: {
     label: 'Queue',
@@ -54,7 +54,7 @@ export const SHAPE_DEFS: Record<ServiceShape, ShapeDef> = {
     rounded: 'rounded-lg',
     borderStyle: 'solid',
     borderWidth: 'border-2',
-    chipClass: 'bg-orange-100 text-orange-700',
+    chipClass: 'bg-orange-100 dark:bg-orange-900/50 text-orange-700 dark:text-orange-300',
   },
   gateway: {
     label: 'Gateway',
@@ -62,7 +62,7 @@ export const SHAPE_DEFS: Record<ServiceShape, ShapeDef> = {
     rounded: 'rounded-3xl',
     borderStyle: 'solid',
     borderWidth: 'border-[3px]',
-    chipClass: 'bg-purple-100 text-purple-700',
+    chipClass: 'bg-purple-100 dark:bg-purple-900/50 text-purple-700 dark:text-purple-300',
   },
   cache: {
     label: 'Cache',
@@ -70,7 +70,7 @@ export const SHAPE_DEFS: Record<ServiceShape, ShapeDef> = {
     rounded: 'rounded-lg',
     borderStyle: 'dashed',
     borderWidth: 'border-2',
-    chipClass: 'bg-red-100 text-red-700',
+    chipClass: 'bg-red-100 dark:bg-red-900/50 text-red-700 dark:text-red-300',
   },
   external: {
     label: 'External',
@@ -78,7 +78,7 @@ export const SHAPE_DEFS: Record<ServiceShape, ShapeDef> = {
     rounded: 'rounded-sm',
     borderStyle: 'dashed',
     borderWidth: 'border-2',
-    chipClass: 'bg-gray-100 text-gray-500',
+    chipClass: 'bg-gray-100 dark:bg-gray-700 text-gray-500 dark:text-gray-300',
   },
 }
 
@@ -92,7 +92,7 @@ function EndpointRow({ svcId, id, name, type }: { svcId: string; id: string; nam
   return (
     <div
       className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
-        ${isSelected ? 'bg-indigo-100 ring-1 ring-indigo-400' : 'hover:bg-gray-100'}`}
+        ${isSelected ? 'bg-indigo-100 dark:bg-indigo-950 ring-1 ring-indigo-400 dark:ring-indigo-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
       onClick={(e) => {
         e.stopPropagation()
         selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'endpoint' })
@@ -103,7 +103,7 @@ function EndpointRow({ svcId, id, name, type }: { svcId: string; id: string; nam
       <span className="inline-block px-1 rounded text-white font-mono text-[10px]" style={{ background: color }}>
         {type.toUpperCase()}
       </span>
-      <span className="truncate text-gray-700">{name}</span>
+      <span className="truncate text-gray-700 dark:text-gray-200">{name}</span>
       <Handle type="source" position={Position.Right} id={`${id}-src`}
         style={{ right: -6, width: 8, height: 8, background: color, border: '1px solid white' }} />
     </div>
@@ -118,7 +118,7 @@ function TaskRow({ svcId, id, name, type }: { svcId: string; id: string; name: s
   return (
     <div
       className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
-        ${isSelected ? 'bg-orange-100 ring-1 ring-orange-400' : 'hover:bg-gray-100'}`}
+        ${isSelected ? 'bg-orange-100 dark:bg-orange-950 ring-1 ring-orange-400 dark:ring-orange-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
       onClick={(e) => {
         e.stopPropagation()
         selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'async' })
@@ -129,7 +129,7 @@ function TaskRow({ svcId, id, name, type }: { svcId: string; id: string; name: s
       <span className="inline-block px-1 rounded text-white font-mono text-[10px] truncate max-w-[80px]" style={{ background: color }}>
         {type.replace(/_/g, ' ')}
       </span>
-      <span className="truncate text-gray-700">{name}</span>
+      <span className="truncate text-gray-700 dark:text-gray-200">{name}</span>
       <Handle type="source" position={Position.Right} id={`${id}-src`}
         style={{ right: -6, width: 8, height: 8, background: color, border: '1px solid white' }} />
     </div>
@@ -144,7 +144,7 @@ function EventRow({ svcId, id, name, type }: { svcId: string; id: string; name: 
   return (
     <div
       className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
-        ${isSelected ? 'bg-green-100 ring-1 ring-green-400' : 'hover:bg-gray-100'}`}
+        ${isSelected ? 'bg-green-100 dark:bg-green-950 ring-1 ring-green-400 dark:ring-green-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
       onClick={(e) => {
         e.stopPropagation()
         selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'event' })
@@ -155,7 +155,7 @@ function EventRow({ svcId, id, name, type }: { svcId: string; id: string; name: 
       <span className="inline-block px-1 rounded text-white font-mono text-[10px]" style={{ background: color }}>
         {type.toUpperCase()}
       </span>
-      <span className="truncate text-gray-700">{name}</span>
+      <span className="truncate text-gray-700 dark:text-gray-200">{name}</span>
       <Handle type="source" position={Position.Right} id={`${id}-src`}
         style={{ right: -6, width: 8, height: 8, background: color, border: '1px solid white' }} />
     </div>
@@ -170,7 +170,7 @@ function Section({ label, icon, count, children }: {
   return (
     <div className="mt-1">
       <button
-        className="flex items-center gap-1 w-full px-2 py-0.5 text-[11px] font-semibold text-gray-500 hover:text-gray-700 uppercase tracking-wide"
+        className="flex items-center gap-1 w-full px-2 py-0.5 text-[11px] font-semibold text-gray-500 dark:text-gray-400 hover:text-gray-700 dark:hover:text-gray-200 uppercase tracking-wide"
         onClick={(e) => { e.stopPropagation(); setOpen((o) => !o) }}
       >
         {open ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
@@ -191,8 +191,8 @@ function InternalSection({ serviceId, interactions }: { serviceId: string; inter
   const nameOf = (id: string) => services.find((s) => s.id === id)?.name ?? id
 
   return (
-    <div className="mx-1 mb-1 rounded-lg border border-dashed border-gray-300 bg-gray-50 overflow-hidden">
-      <div className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold text-gray-400 uppercase tracking-wide bg-gray-100 border-b border-dashed border-gray-300">
+    <div className="mx-1 mb-1 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 overflow-hidden">
+      <div className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide bg-gray-100 dark:bg-gray-800 border-b border-dashed border-gray-300 dark:border-gray-600">
         <Settings size={9} />
         Internal
       </div>
@@ -200,12 +200,12 @@ function InternalSection({ serviceId, interactions }: { serviceId: string; inter
         const isOut = ix.from === serviceId
         const otherId = isOut ? ix.to : ix.from
         return (
-          <div key={ix.id} className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-gray-500">
+          <div key={ix.id} className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-gray-500 dark:text-gray-400">
             {isOut
               ? <ArrowRight size={10} className="text-indigo-400 shrink-0" />
               : <ArrowLeft size={10} className="text-orange-400 shrink-0" />}
-            <span className="font-medium text-gray-600 truncate">{nameOf(otherId)}</span>
-            {ix.label && <span className="text-gray-400 truncate">· {ix.label}</span>}
+            <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{nameOf(otherId)}</span>
+            {ix.label && <span className="text-gray-400 dark:text-gray-500 truncate">· {ix.label}</span>}
           </div>
         )
       })}
@@ -246,7 +246,7 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
 
   return (
     <div
-      className={`bg-white ${shapeDef.rounded} shadow-lg ${shapeDef.borderWidth} min-w-[240px] max-w-[300px] select-none transition-all relative`}
+      className={`bg-white dark:bg-gray-800 ${shapeDef.rounded} shadow-lg ${shapeDef.borderWidth} min-w-[240px] max-w-[300px] select-none transition-all relative`}
       style={{ borderColor, opacity, borderStyle: shapeDef.borderStyle }}
       onClick={() => selectService(service.id)}
     >
@@ -265,9 +265,9 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
       >
         <div className="w-3 h-3 rounded-full shrink-0" style={{ background: service.color ?? '#CBD5E1' }} />
         <div className="min-w-0 flex-1">
-          <div className="font-semibold text-sm text-gray-800 truncate">{service.name}</div>
+          <div className="font-semibold text-sm text-gray-800 dark:text-gray-100 truncate">{service.name}</div>
           {service.description && (
-            <div className="text-[10px] text-gray-500 truncate">{service.description}</div>
+            <div className="text-[10px] text-gray-500 dark:text-gray-400 truncate">{service.description}</div>
           )}
         </div>
         {/* Shape badge */}
@@ -298,7 +298,7 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
           ))}
         </Section>
         {(!service.endpoints?.length && !service.async?.length && !service.events?.length) && (
-          <div className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400">
+          <div className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
             <Settings size={10} />
             <span>No members — click Edit to add</span>
           </div>

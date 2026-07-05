@@ -15,6 +15,7 @@ import '@xyflow/react/dist/style.css'
 import ServiceNode from './ServiceNode'
 import InteractionEdge from './InteractionEdge'
 import { useGraphStore } from '../store/graph'
+import { useThemeStore } from '../store/theme'
 import { INTERACTION_STYLES } from '../lib/interactionStyles'
 import { Interaction } from '../types/schema'
 
@@ -23,8 +24,8 @@ const edgeTypes: EdgeTypes = { interaction: InteractionEdge as never }
 
 function Legend() {
   return (
-    <div className="bg-white border border-gray-200 rounded-xl shadow p-3 text-xs">
-      <div className="font-semibold text-gray-700 mb-2">Interaction Types</div>
+    <div className="bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 rounded-xl shadow p-3 text-xs">
+      <div className="font-semibold text-gray-700 dark:text-gray-200 mb-2">Interaction Types</div>
       <div className="space-y-1">
         {Object.entries(INTERACTION_STYLES).map(([type, style]) => (
           <div key={type} className="flex items-center gap-2">
@@ -36,18 +37,18 @@ function Legend() {
                 strokeDasharray={style.strokeDasharray ?? undefined}
               />
             </svg>
-            <span className="text-gray-600">{style.label}</span>
+            <span className="text-gray-600 dark:text-gray-300">{style.label}</span>
           </div>
         ))}
       </div>
-      <div className="mt-2 pt-2 border-t border-gray-100 space-y-1">
+      <div className="mt-2 pt-2 border-t border-gray-100 dark:border-gray-700 space-y-1">
         <div className="flex items-center gap-2">
           <div className="w-8 h-0.5 bg-green-500" />
-          <span className="text-gray-600">Callee (outgoing)</span>
+          <span className="text-gray-600 dark:text-gray-300">Callee (outgoing)</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-8 h-0.5 bg-blue-500" />
-          <span className="text-gray-600">Caller (incoming)</span>
+          <span className="text-gray-600 dark:text-gray-300">Caller (incoming)</span>
         </div>
       </div>
     </div>
@@ -64,6 +65,7 @@ export default function Canvas() {
     clearSelection,
     config,
   } = useGraphStore()
+  const isDark = useThemeStore((s) => s.theme === 'dark')
 
   const onConnect = useCallback(
     (connection: Connection) => {
@@ -114,14 +116,14 @@ export default function Canvas() {
       }}
       proOptions={{ hideAttribution: true }}
     >
-      <Background gap={20} size={1} color="#e5e7eb" />
+      <Background gap={20} size={1} color={isDark ? '#374151' : '#e5e7eb'} />
       <Controls showInteractive={false} />
       <MiniMap
         nodeColor={(n) => {
           const svc = config.services.find((s) => s.id === n.id)
           return svc?.color ?? '#CBD5E1'
         }}
-        maskColor="rgba(255,255,255,0.7)"
+        maskColor={isDark ? 'rgba(17,24,39,0.7)' : 'rgba(255,255,255,0.7)'}
       />
       <Panel position="bottom-left">
         <Legend />

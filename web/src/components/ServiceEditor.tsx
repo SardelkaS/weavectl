@@ -28,25 +28,25 @@ function EndpointForm({
   const color = ENDPOINT_TYPE_COLORS[ep.type] ?? '#6B7280'
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
       <div
-        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50"
+        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className="text-[10px] font-bold px-1 rounded text-white" style={{ background: color }}>
           {ep.type.toUpperCase()}
         </span>
-        <span className="text-sm font-medium text-gray-700 flex-1 truncate">{ep.name || '(unnamed)'}</span>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 flex-1 truncate">{ep.name || '(unnamed)'}</span>
         <button
-          className="text-red-400 hover:text-red-600 p-0.5"
+          className="text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 p-0.5"
           onClick={(e) => { e.stopPropagation(); onDelete() }}
         >
           <Trash2 size={12} />
         </button>
       </div>
       {open && (
-        <div className="px-3 py-2 space-y-2 bg-gray-50 border-t border-gray-200">
+        <div className="px-3 py-2 space-y-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-600">
           <div className="grid grid-cols-2 gap-2">
             <Field label="Name">
               <Input value={ep.name} onChange={(e) => onChange({ name: e.target.value })} />
@@ -96,25 +96,25 @@ function TaskForm({
   const color = TASK_TYPE_COLORS[task.type] ?? '#6B7280'
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
       <div
-        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50"
+        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className="text-[10px] font-bold px-1 rounded text-white truncate max-w-[90px]" style={{ background: color }}>
           {task.type.replace(/_/g, ' ')}
         </span>
-        <span className="text-sm font-medium text-gray-700 flex-1 truncate">{task.name || '(unnamed)'}</span>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 flex-1 truncate">{task.name || '(unnamed)'}</span>
         <button
-          className="text-red-400 hover:text-red-600 p-0.5"
+          className="text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 p-0.5"
           onClick={(e) => { e.stopPropagation(); onDelete() }}
         >
           <Trash2 size={12} />
         </button>
       </div>
       {open && (
-        <div className="px-3 py-2 space-y-2 bg-gray-50 border-t border-gray-200">
+        <div className="px-3 py-2 space-y-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-600">
           <div className="grid grid-cols-2 gap-2">
             <Field label="Name">
               <Input value={task.name} onChange={(e) => onChange({ name: e.target.value })} />
@@ -161,25 +161,25 @@ function EventForm({
   const [open, setOpen] = useState(false)
 
   return (
-    <div className="border border-gray-200 rounded-lg overflow-hidden">
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
       <div
-        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50"
+        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
         onClick={() => setOpen((o) => !o)}
       >
         {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
         <span className={`text-[10px] font-bold px-1 rounded text-white ${ev.type === 'publish' ? 'bg-green-500' : 'bg-blue-400'}`}>
           {ev.type.toUpperCase()}
         </span>
-        <span className="text-sm font-medium text-gray-700 flex-1 truncate">{ev.name || '(unnamed)'}</span>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 flex-1 truncate">{ev.name || '(unnamed)'}</span>
         <button
-          className="text-red-400 hover:text-red-600 p-0.5"
+          className="text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 p-0.5"
           onClick={(e) => { e.stopPropagation(); onDelete() }}
         >
           <Trash2 size={12} />
         </button>
       </div>
       {open && (
-        <div className="px-3 py-2 space-y-2 bg-gray-50 border-t border-gray-200">
+        <div className="px-3 py-2 space-y-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-600">
           <div className="grid grid-cols-2 gap-2">
             <Field label="Name">
               <Input value={ev.name} onChange={(e) => onChange({ name: e.target.value })} />
@@ -231,9 +231,9 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
     <div className="flex flex-col gap-3">
       {/* Header */}
       <div className="flex items-center justify-between">
-        <h3 className="font-semibold text-gray-800">Edit Service</h3>
+        <h3 className="font-semibold text-gray-800 dark:text-gray-100">Edit Service</h3>
         <button
-          className="text-gray-400 hover:text-gray-600"
+          className="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300"
           onClick={() => selectService(null)}
         >
           <X size={16} />
@@ -249,7 +249,7 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
           <Input
             value={svc.id}
             disabled
-            className="bg-gray-50 text-gray-400 cursor-not-allowed"
+            className="bg-gray-50 dark:bg-gray-800 text-gray-400 dark:text-gray-500 cursor-not-allowed"
           />
         </Field>
         <Field label="Description">
@@ -261,13 +261,13 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
               type="color"
               value={svc.color ?? '#4F46E5'}
               onChange={(e) => patch({ color: e.target.value })}
-              className="w-8 h-8 rounded border border-gray-200 cursor-pointer"
+              className="w-8 h-8 rounded border border-gray-200 dark:border-gray-600 cursor-pointer"
             />
             <div className="flex gap-1 flex-wrap">
               {SERVICE_COLORS.map((c) => (
                 <button
                   key={c}
-                  className="w-5 h-5 rounded-full border-2 border-white shadow"
+                  className="w-5 h-5 rounded-full border-2 border-white dark:border-gray-800 shadow"
                   style={{ background: c, outline: svc.color === c ? `2px solid ${c}` : undefined }}
                   onClick={() => patch({ color: c })}
                 />
@@ -288,8 +288,8 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
                   onClick={() => patch({ shape: s })}
                   className={`flex flex-col items-center gap-1 p-2 rounded-lg border text-[10px] font-medium transition-colors
                     ${isActive
-                      ? 'border-indigo-400 bg-indigo-50 text-indigo-700'
-                      : 'border-gray-200 hover:border-gray-300 text-gray-600'}`}
+                      ? 'border-indigo-400 dark:border-indigo-500 bg-indigo-50 dark:bg-indigo-950 text-indigo-700 dark:text-indigo-300'
+                      : 'border-gray-200 dark:border-gray-600 hover:border-gray-300 dark:hover:border-gray-500 text-gray-600 dark:text-gray-300'}`}
                 >
                   <Icon size={16} />
                   {def.label}
@@ -303,7 +303,7 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
       {/* Endpoints */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Endpoints</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Endpoints</span>
           <button
             className="flex items-center gap-1 text-xs text-indigo-600 hover:text-indigo-800"
             onClick={addEndpoint}
@@ -330,7 +330,7 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
       {/* Async */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Async</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Async</span>
           <button
             className="flex items-center gap-1 text-xs text-orange-600 hover:text-orange-800"
             onClick={addTask}
@@ -357,7 +357,7 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
       {/* Events */}
       <div>
         <div className="flex items-center justify-between mb-1.5">
-          <span className="text-xs font-semibold text-gray-500 uppercase tracking-wide">Events</span>
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Events</span>
           <button
             className="flex items-center gap-1 text-xs text-green-600 hover:text-green-800"
             onClick={addEvent}
@@ -382,9 +382,9 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
       </div>
 
       {/* Danger zone */}
-      <div className="pt-2 border-t border-gray-200">
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
         <button
-          className="flex items-center gap-1 text-sm text-red-500 hover:text-red-700"
+          className="flex items-center gap-1 text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300"
           onClick={() => {
             if (confirm(`Delete service "${svc.name}"?`)) {
               removeService(serviceId)
