@@ -28,7 +28,11 @@ Model your microservice architecture — HTTP APIs, gRPC methods, Kafka topics, 
 ## Features
 
 - **Visual graph editor** — drag-and-drop service nodes with expandable members (endpoints, tasks, events)
-- **Call graph tracing** — select any API method or async task to highlight all interactions it triggers, transitively, across the whole graph; callers shown in blue, callees in green
+- **Call graph tracing** — select any API method or async task to highlight all interactions it *directly* triggers, transitively, across the whole graph; callers shown in blue, callees in green — never bleeds into unrelated members of a service that's merely touched along the way
+- **Inline member editors + View mode** — clicking an endpoint/task/event opens a focused editor for just that member; flip on **View mode** to browse and trace without editors popping open
+- **Undo / redo** — every edit can be undone (`Ctrl+Z`) and redone (`Ctrl+Shift+Z`); rapid edits like typing or dragging a node collapse into a single step
+- **Search & filter** — one search box narrows both the services and interactions lists in the sidebar
+- **Dark mode** — follows your OS theme by default; one click to override, remembered across restarts
 - **6 node shapes** — visually distinguish services, databases, caches, queues, gateways, and external systems
 - **8 interaction types** rendered with distinct colors and line styles: HTTP, gRPC, GraphQL, WebSocket, Kafka, AMQP, Redis, Database
 - **Import / Export** — JSON and YAML config files; import via file upload, paste, or CLI flag
@@ -213,22 +217,25 @@ weavectl convert -i old.yml          -o new.json
 ### Layout
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│  🕸️ weavectl  [Architecture Name]          Layout Import Export │
-├──────────────┬──────────────────────────────────────────────────┤
-│              │                                                  │
-│  Services    │                  Graph Canvas                    │
-│  ──────────  │                                                  │
-│  ● API GW    │   ┌────────────────┐      ┌──────────────────┐   │
-│  ● User Svc  │   │  API Gateway   │─────>│   User Service   │   │
-│  ● Order Svc │   │ ▸ Endpoints    │      │ ▸ Endpoints      │   │
-│              │   │   GET /users   │      │   GetUser [gRPC] │   │
-│  Interactions│   │   POST /orders │      │ ▸ Async Tasks    │   │
-│  ──────────  │   └────────────────┘      └──────────────────┘   │
-│  api-gw→user │                                                  │
-│  user→kafka  │                                  Legend ───────┤ │
-└──────────────┴──────────────────────────────────────────────────┘
+┌───────────────────────────────────────────────────────────────────────┐
+│ 🕸️ weavectl [Name]  View mode  Undo Redo  Layout Import Export Save   │
+│                                                    AI Prompt    ☀/🌙  │
+├──────────────┬──────────────────────────────────────────────────────-┤
+│  Services    │                                                       │
+│  🔍 Search…  │                  Graph Canvas                        │
+│  ──────────  │                                                       │
+│  ● API GW    │   ┌────────────────┐      ┌──────────────────┐        │
+│  ● User Svc  │   │  API Gateway   │─────>│   User Service   │        │
+│  ● Order Svc │   │ ▸ Endpoints    │      │ ▸ Endpoints      │        │
+│              │   │   GET /users   │      │   GetUser [gRPC] │        │
+│  Interactions│   │   POST /orders │      │ ▸ Async Tasks    │        │
+│  ──────────  │   └────────────────┘      └──────────────────┘        │
+│  api-gw→user │                                                       │
+│  user→kafka  │                                  Legend ────────────┤ │
+└──────────────┴───────────────────────────────────────────────────────┘
 ```
+
+The toolbar, left to right: **View mode** toggle, **Undo/Redo**, **Layout**, **Import**, **Export**, **Save**, **AI Prompt**, and a **light/dark theme** toggle on the far right.
 
 ### Service Nodes
 
@@ -240,7 +247,7 @@ Each node represents a service and has three collapsible sections:
 | **Async Tasks** | ⚡ | Kafka consumers/producers, AMQP, cron jobs, workers |
 | **Events** | 📡 | Domain events this service publishes or subscribes to |
 
-Click a section header to collapse/expand it. Click any member row to **activate call graph tracing** for that member.
+Click a section header to collapse/expand it. Click any member row to **trace its call graph** and open its editor (see [Call Graph Tracing](#call-graph-tracing) and [View Mode](#view-mode)).
 
 ### Adding and Editing
 
@@ -248,7 +255,10 @@ Click a section header to collapse/expand it. Click any member row to **activate
 Click **Add** in the sidebar → enter name → the node appears on the canvas and the editor opens in the sidebar.
 
 **Add members to a service:**
-Select a service node (click it) → the sidebar shows the service editor → use **+ Add** buttons under Endpoints / Async Tasks / Events.
+Select a service node (click its header) → the sidebar shows the service editor → use **+ Add** buttons under Endpoints / Async Tasks / Events.
+
+**Edit an existing member directly:**
+Click an endpoint / async task / event row itself (not the service header) → its own focused editor opens in the sidebar (name, type, method/path or topic/queue, description) with a **Delete** button. The same member can also be edited via the service editor's expandable list.
 
 **Create an interaction:**
 Hover over a service node — small dots (handles) appear on the left and right edges of each member row. Drag from a dot on the **source** node to a dot on the **target** node. A new HTTP interaction is created; click it to change its type, label, and other properties.
@@ -257,7 +267,7 @@ Hover over a service node — small dots (handles) appear on the left and right 
 Click any edge label on the canvas → the interaction editor opens in the sidebar.
 
 **Delete:**
-Open the editor for the service or interaction → scroll to the bottom → click the red **Delete** button.
+Open the editor for the service, member, or interaction → scroll to the bottom → click the red **Delete** button. Deleting a service asks for confirmation. Any deletion can be undone with `Ctrl+Z`.
 
 ### Call Graph Tracing
 
@@ -265,10 +275,27 @@ This is the core feature. Click any endpoint, async task, or event in a service 
 
 - **Green edges** — interactions this member triggers (callees), traced transitively
 - **Blue edges** — interactions that trigger this member (callers)
-- **Dimmed** — everything unrelated to the selected member
-- **Banner** appears at the top of the sidebar showing the active trace
+- **Dimmed** — everything unrelated to the selected member, including *other, unrelated members of a service that's merely touched along the chain* — only the exact call path lights up
+- **Editor opens** in the sidebar for the selected member, unless **View mode** is on (see below)
 
-Click the same member again, or press the canvas background, to clear the trace.
+Click the same member again, or press the canvas background, to clear the trace and close its editor.
+
+### View Mode
+
+The 👁 switch in the toolbar turns off the auto-opening editor: selecting a service, interaction, or member still highlights and traces it on the canvas, but the sidebar stays on the plain list instead of popping open an editor. Useful for browsing or presenting an architecture without risking an accidental edit.
+
+### Undo / Redo
+
+Every edit can be undone — adding, editing, or deleting a service, member, or interaction; auto-layout; dragging a node on the canvas. Rapid-fire edits (typing into a field, dragging a node) are coalesced into a single undo step instead of one per keystroke or per frame.
+
+| Action | Shortcut | Toolbar |
+|--------|----------|---------|
+| Undo | `Ctrl+Z` (`Cmd+Z` on macOS) | ↶ button |
+| Redo | `Ctrl+Shift+Z` or `Ctrl+Y` | ↷ button |
+
+### Search
+
+The search box at the top of the sidebar filters the services list and the interactions list at the same time — matching on service name/id/tags, resolved endpoint/task/event names, interaction type, or label.
 
 ### Import and Export
 
@@ -283,6 +310,10 @@ Click the same member again, or press the canvas background, to clear the trace.
 ### Auto Layout
 
 Click **Layout** in the toolbar to automatically arrange all nodes left-to-right using a hierarchical layout algorithm (dagre). Node positions are saved to the config.
+
+### Theme
+
+weavectl follows your OS's light/dark preference automatically. Click the sun/moon icon at the right end of the toolbar to override it manually — your choice is remembered (via `localStorage`) across restarts, even if the system theme changes later.
 
 ---
 
@@ -351,7 +382,7 @@ services:
         method: GET           # HTTP method (GET | POST | PUT | PATCH | DELETE)
         description: Returns a user by ID
 
-    async_tasks:
+    async:
       - id: process-payment
         name: ProcessPayment
         type: kafka_consumer  # see Async Task Types table below
@@ -403,6 +434,7 @@ The `member-id` must match the `id` field of an endpoint, async task, or event w
 | `amqp_producer` | Publishes to a RabbitMQ/AMQP exchange |
 | `cron` | Scheduled job (set `schedule` to a cron expression) |
 | `worker` | Generic background worker or queue consumer |
+| `task` | Generic one-off or ad-hoc background task |
 
 ---
 
@@ -442,6 +474,17 @@ npm run dev
 
 Open [http://localhost:5173](http://localhost:5173) — the UI has hot-module reload, and the API is served by Go.
 
+### Running tests
+
+```bash
+# Go backend (internal/config, internal/ai, internal/server)
+go test ./...
+
+# React frontend (Vitest) — tracing, serializer, layout
+cd web
+npm test
+```
+
 ### Build commands
 
 ```bash
@@ -468,29 +511,36 @@ weavectl/
 ├── internal/
 │   ├── config/
 │   │   ├── schema.go           # Go structs (mirrors TypeScript schema.ts)
-│   │   └── convert.go          # JSON ↔ YAML marshal/unmarshal
+│   │   ├── convert.go          # JSON ↔ YAML marshal/unmarshal
+│   │   └── convert_test.go
 │   ├── server/
-│   │   └── server.go           # HTTP server, REST handlers, SPA fallback
+│   │   ├── server.go           # HTTP server, REST handlers, SPA fallback
+│   │   └── server_test.go
 │   └── ai/
-│       └── prompt.go           # prompt template builder + Claude API client
+│       ├── prompt.go           # static AI agent prompt (schema + analysis guide)
+│       └── prompt_test.go
 │
 └── web/                        # React application
     ├── src/
     │   ├── types/schema.ts     # TypeScript types matching schema.go
-    │   ├── store/graph.ts      # Zustand store (config, nodes, edges, trace)
+    │   ├── store/
+    │   │   ├── graph.ts        # Zustand store (config, nodes, edges, trace, undo history)
+    │   │   └── theme.ts        # light/dark theme store (system default + override)
     │   ├── lib/
-    │   │   ├── tracing.ts      # BFS call-graph traversal
-    │   │   ├── layout.ts       # dagre auto-layout
-    │   │   ├── serializer.ts   # config ↔ React Flow nodes/edges
+    │   │   ├── tracing.ts      # BFS call-graph traversal (+ tracing.test.ts)
+    │   │   ├── layout.ts       # dagre auto-layout (+ layout.test.ts)
+    │   │   ├── serializer.ts   # config ↔ React Flow nodes/edges (+ serializer.test.ts)
     │   │   └── interactionStyles.ts  # colors & dash patterns per type
     │   └── components/
     │       ├── Canvas.tsx          # React Flow root
     │       ├── ServiceNode.tsx     # expandable service node
     │       ├── InteractionEdge.tsx # styled edge component
-    │       ├── Sidebar.tsx         # service list + editors
+    │       ├── Sidebar.tsx         # service/interaction lists, search
     │       ├── ServiceEditor.tsx   # CRUD for endpoints/tasks/events
+    │       ├── MemberEditor.tsx    # focused editor for a single member
     │       ├── InteractionEditor.tsx
-    │       ├── Toolbar.tsx         # import/export/AI/layout buttons
+    │       ├── FormControls.tsx    # shared Field/Input/Select/Textarea
+    │       ├── Toolbar.tsx         # view mode/undo-redo/import/export/AI/theme
     │       └── AIPromptModal.tsx   # AI generation dialog
     └── dist/                   # built output (embedded into Go binary)
 ```
@@ -504,9 +554,8 @@ The Go server exposes these endpoints (all under `/api`):
 | `GET` | `/api/config` | Return current in-memory config as JSON |
 | `PUT` | `/api/config` | Replace config; writes to `--config` file if set |
 | `GET` | `/api/export?format=yaml` | Download config as JSON or YAML attachment |
-| `POST` | `/api/import` | Multipart file upload; returns parsed config |
-| `POST` | `/api/ai/prompt` | Build and return the AI prompt string |
-| `POST` | `/api/ai/generate` | Call Claude API and replace the config (`X-Claude-Key` header required) |
+| `POST` | `/api/import` | Multipart file upload, or a raw JSON/YAML body; returns parsed config |
+| `GET` | `/api/ai/prompt` | Return the static AI agent prompt string (plain text) |
 
 ---
 
@@ -523,7 +572,15 @@ The Zustand store holds the `Config` object as the canonical state. React Flow n
 1. **Forward pass** — follows `from` references to find all callees (services this member calls, transitively)
 2. **Backward pass** — follows `to` references to find all callers (services that call this member)
 
-The result is two `Set<string>` of interaction IDs. Every edge reads its highlight state from these sets via `useEdgeHighlight()`. Nodes are highlighted if their service ID appears in the involved services set.
+The result is two `Set<string>` of interaction IDs. Every edge reads its highlight state from these sets via `useEdgeHighlight()`. Nodes are highlighted if their service ID appears in the involved services set. Traversal only ever follows an exact `from`/`to` ref match — reaching a service through one of its members never fans out into that service's other, unrelated members.
+
+### Undo / redo history
+
+The store keeps `past`/`future` arrays of full `Config` snapshots alongside the live config. Every mutating action pushes the pre-change config onto `past` and clears `future`; `undo`/`redo` pop between them. Edits driven by continuous input (typing, node dragging) are coalesced by key + a short time window so one gesture produces one undo step instead of one per keystroke or per animation frame.
+
+### Theme
+
+`store/theme.ts` is a small, independent Zustand store: it resolves the initial theme from `localStorage` (an explicit user choice) or `prefers-color-scheme` (the system default), applies it by toggling a `dark` class on `<html>`, and keeps listening for OS theme changes for as long as the user hasn't overridden it. Styling itself is plain Tailwind `dark:` variants throughout the component tree — no separate dark theme stylesheet.
 
 ### Embedding
 
