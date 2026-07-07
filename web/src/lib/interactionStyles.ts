@@ -49,6 +49,9 @@ export const EVENT_TYPE_COLORS: Record<string, string> = {
   subscribe: '#86EFAC',
 }
 
+/** Single badge color for internal-process members (no sub-type to color by). */
+export const INTERNAL_PROCESS_COLOR = '#64748B'
+
 export const ENDPOINT_TYPES: EndpointType[] = ['http', 'grpc', 'graphql', 'websocket']
 
 export const TASK_TYPES: AsyncTaskType[] = [

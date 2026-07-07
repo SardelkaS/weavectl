@@ -1,8 +1,8 @@
 import { X, Trash2 } from 'lucide-react'
-import { Endpoint, AsyncTask, Event, EndpointType, AsyncTaskType, SelectedMember } from '../types/schema'
+import { Endpoint, AsyncTask, Event, InternalProcess, EndpointType, AsyncTaskType, SelectedMember } from '../types/schema'
 import { useGraphStore } from '../store/graph'
 import {
-  ENDPOINT_TYPE_COLORS, TASK_TYPE_COLORS,
+  ENDPOINT_TYPE_COLORS, TASK_TYPE_COLORS, INTERNAL_PROCESS_COLOR,
   ENDPOINT_TYPES, TASK_TYPES, HTTP_METHODS,
 } from '../lib/interactionStyles'
 import { Field, Input, Textarea, Select } from './FormControls'
@@ -225,6 +225,52 @@ function EventMemberEditor({ serviceId, ev, serviceName }: { serviceId: string; 
   )
 }
 
+function InternalProcessMemberEditor({ serviceId, proc, serviceName }: { serviceId: string; proc: InternalProcess; serviceName: string }) {
+  const { config, updateService, selectMember } = useGraphStore()
+
+  function patch(p: Partial<InternalProcess>) {
+    const procs = config.services.find((s) => s.id === serviceId)?.internal ?? []
+    updateService(serviceId, { internal: procs.map((x) => (x.id === proc.id ? { ...x, ...p } : x)) })
+  }
+
+  function remove() {
+    const procs = config.services.find((s) => s.id === serviceId)?.internal ?? []
+    updateService(serviceId, { internal: procs.filter((x) => x.id !== proc.id) })
+    selectMember(null)
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <EditorHeader
+        color={INTERNAL_PROCESS_COLOR}
+        badge="INTERNAL"
+        title="Edit Internal Process"
+        subtitle={serviceName}
+        onClose={() => selectMember(null)}
+      />
+
+      <Field label="Name">
+        <Input value={proc.name} onChange={(e) => patch({ name: e.target.value })} />
+      </Field>
+
+      <Field label="Description">
+        <Textarea
+          value={proc.description ?? ''}
+          rows={3}
+          placeholder="e.g. Repository layer, rate limiter, generic bus interface…"
+          onChange={(e) => patch({ description: e.target.value })}
+        />
+      </Field>
+
+      <div className="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <button className="flex items-center gap-1 text-sm text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300" onClick={remove}>
+          <Trash2 size={14} /> Delete Internal Process
+        </button>
+      </div>
+    </div>
+  )
+}
+
 export default function MemberEditor({ member }: { member: SelectedMember }) {
   const svc = useGraphStore((s) => s.config.services.find((sv) => sv.id === member.serviceId))
   if (!svc) return null
@@ -239,6 +285,12 @@ export default function MemberEditor({ member }: { member: SelectedMember }) {
     const task = svc.async?.find((t) => t.id === member.memberId)
     if (!task) return null
     return <TaskMemberEditor serviceId={svc.id} task={task} serviceName={svc.name} />
+  }
+
+  if (member.memberType === 'internal') {
+    const proc = svc.internal?.find((p) => p.id === member.memberId)
+    if (!proc) return null
+    return <InternalProcessMemberEditor serviceId={svc.id} proc={proc} serviceName={svc.name} />
   }
 
   const ev = svc.events?.find((e) => e.id === member.memberId)

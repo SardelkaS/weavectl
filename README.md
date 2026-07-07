@@ -2,7 +2,7 @@
 
 A CLI tool + local web UI for building, visualizing, and exploring **service interaction graphs**.
 
-Model your microservice architecture — HTTP APIs, gRPC methods, Kafka topics, async tasks, events — then click any method to instantly trace the full call chain it triggers across the entire system. Export to JSON or YAML; import back for editing. Generate configs with an AI agent.
+Model your microservice architecture — HTTP APIs, gRPC methods, Kafka topics, async tasks, events, internal processes — then click any method to instantly trace the full call chain it triggers across the entire system. Export to JSON or YAML; import back for editing. Generate configs with an AI agent.
 
 ![weavectl screenshot placeholder](https://placehold.co/900x500/1e1b4b/a5b4fc?text=weavectl+UI)
 
@@ -27,7 +27,8 @@ Model your microservice architecture — HTTP APIs, gRPC methods, Kafka topics, 
 
 ## Features
 
-- **Visual graph editor** — drag-and-drop service nodes with expandable members (endpoints, tasks, events)
+- **Visual graph editor** — drag-and-drop service nodes with expandable members (endpoints, tasks, events, internal processes)
+- **Member-to-member connections only** — every interaction connects two specific members; there's no such thing as a whole-service connection. A call with no dedicated public endpoint (a repository layer, a rate limiter, a generic bus/queue interface) gets its own **internal process** member instead
 - **Call graph tracing** — select any API method or async task to highlight all interactions it *directly* triggers, transitively, across the whole graph; callers shown in blue, callees in green — never bleeds into unrelated members of a service that's merely touched along the way
 - **Inline member editors + View mode** — clicking an endpoint/task/event opens a focused editor for just that member; flip on **View mode** to browse and trace without editors popping open
 - **Undo / redo** — every edit can be undone (`Ctrl+Z`) and redone (`Ctrl+Shift+Z`); rapid edits like typing or dragging a node collapse into a single step
@@ -87,7 +88,7 @@ Open [http://localhost:8080](http://localhost:8080) in your browser.
 1. Click **Add** in the left sidebar → enter a service name (e.g. `API Gateway`)
 2. In the service editor that opens, click **+ Add** under **Endpoints** → fill in name, type, path
 3. Repeat for other services
-4. Drag from a handle (dot) on one service node to a handle on another to create an interaction
+4. Hover a service node — each **member row** (endpoint/task/event/internal process) grows a handle (dot) on its left/right edge. Drag from a member's handle on one service to a member's handle on another to create an interaction. (Whole services aren't connectable — if the call doesn't belong to one specific endpoint, add an **internal process** member first and connect through that.)
 5. Click the created edge to set its type (gRPC, Kafka, etc.) and label
 6. Click **Export → YAML** to download your config
 
@@ -112,8 +113,9 @@ Or drag-and-drop / paste in the UI via **Import**.
 | All endpoint types | HTTP REST, gRPC, GraphQL, WebSocket |
 | All async task types | `kafka_consumer/producer`, `amqp_consumer/producer`, `cron`, `worker` |
 | Events | `publish` and `subscribe` |
+| Internal processes | Cross-cutting members with no dedicated endpoint, e.g. `order-service.order-repo`, `kafka.message-bus` |
 | Interaction metadata | `sla_ms`, `circuit_breaker`, `retry` |
-| 12 services | API Gateway, User, Order, Payment, Notification, Search, PostgreSQL, Elasticsearch, Redis, Kafka, RabbitMQ, Stripe, SendGrid, Twilio |
+| 14 services | API Gateway, User, Order, Payment, Notification, Search, PostgreSQL, Elasticsearch, Redis, Kafka, RabbitMQ, Stripe, SendGrid, Twilio |
 
 **Load it:**
 
@@ -239,13 +241,16 @@ The toolbar, left to right: **View mode** toggle, **Undo/Redo**, **Layout**, **I
 
 ### Service Nodes
 
-Each node represents a service and has three collapsible sections:
+Each node represents a service and has four collapsible sections:
 
 | Section | Icon | Contains |
 |---------|------|---------|
 | **Endpoints** | 🌐 | HTTP/gRPC/GraphQL/WebSocket API methods |
 | **Async Tasks** | ⚡ | Kafka consumers/producers, AMQP, cron jobs, workers |
 | **Events** | 📡 | Domain events this service publishes or subscribes to |
+| **Internal** | ⚙️ | Cross-cutting members with no dedicated public endpoint — a repository/DB-access layer, a rate limiter, a generic bus/queue interface, … |
+
+Every one of these — including Internal — is a **connectable member**: it gets its own handle and can be the source or target of an interaction. A whole service card is not; see [Connections](#connections-are-always-member-to-member) below.
 
 Click a section header to collapse/expand it. Click any member row to **trace its call graph** and open its editor (see [Call Graph Tracing](#call-graph-tracing) and [View Mode](#view-mode)).
 
@@ -255,23 +260,27 @@ Click a section header to collapse/expand it. Click any member row to **trace it
 Click **Add** in the sidebar → enter name → the node appears on the canvas and the editor opens in the sidebar.
 
 **Add members to a service:**
-Select a service node (click its header) → the sidebar shows the service editor → use **+ Add** buttons under Endpoints / Async Tasks / Events.
+Select a service node (click its header) → the sidebar shows the service editor → use **+ Add** buttons under Endpoints / Async Tasks / Events / Internal.
 
 **Edit an existing member directly:**
-Click an endpoint / async task / event row itself (not the service header) → its own focused editor opens in the sidebar (name, type, method/path or topic/queue, description) with a **Delete** button. The same member can also be edited via the service editor's expandable list.
+Click an endpoint / async task / event / internal-process row itself (not the service header) → its own focused editor opens in the sidebar (name, type, method/path or topic/queue, description) with a **Delete** button. The same member can also be edited via the service editor's expandable list.
 
 **Create an interaction:**
-Hover over a service node — small dots (handles) appear on the left and right edges of each member row. Drag from a dot on the **source** node to a dot on the **target** node. A new HTTP interaction is created; click it to change its type, label, and other properties.
+Hover over a service node — small dots (handles) appear on the left and right edges of each **member row** (Endpoints / Async Tasks / Events / Internal). Drag from a member's handle on the **source** service to a member's handle on the **target** service. A new HTTP interaction is created; click it to change its type, label, and other properties. The handle on the service card's own header is not draggable — you can't connect two whole services (see below).
 
 **Edit an interaction:**
-Click any edge label on the canvas → the interaction editor opens in the sidebar.
+Click any edge label on the canvas → the interaction editor opens in the sidebar. Its **From**/**To** dropdowns list every endpoint, async task, event, and internal process — never a bare service.
 
 **Delete:**
 Open the editor for the service, member, or interaction → scroll to the bottom → click the red **Delete** button. Deleting a service asks for confirmation. Any deletion can be undone with `Ctrl+Z`.
 
+### Connections are always member-to-member
+
+An interaction always connects two specific members — never a whole service. If a call genuinely doesn't belong to one particular endpoint (a shared repository layer, rate-limiting middleware, a generic pub/sub client, …), give the owning service an **Internal** member for it and connect through that instead of leaving it unmodelled. This keeps every edge traceable to something concrete, and is enforced in the UI: the service card's own handle can't be dragged from/to, and the interaction editor's member pickers never offer a bare service as a choice.
+
 ### Call Graph Tracing
 
-This is the core feature. Click any endpoint, async task, or event in a service node:
+This is the core feature. Click any endpoint, async task, event, or internal process in a service node:
 
 - **Green edges** — interactions this member triggers (callees), traced transitively
 - **Blue edges** — interactions that trigger this member (callers)
@@ -396,6 +405,23 @@ services:
         type: publish         # publish | subscribe
         topic: user.created
         description: Emitted after a new user registers
+
+    internal:
+      - id: user-repo
+        name: UserRepository
+        description: DB-access layer shared by GetUser/CreateUser — not itself a public endpoint
+```
+
+### Internal Process
+
+A connectable member for anything that isn't a public endpoint, async task, or domain event — a repository/DB-access layer, rate-limiting middleware, a generic bus/queue interface, and the like. Use one whenever a call doesn't belong to one specific endpoint; see [Connections](#connections-are-always-member-to-member).
+
+```yaml
+internal:
+  - id: order-repo          # unique within this service
+    name: OrderRepository   # display name
+    description: DB-access layer for order records, used across multiple endpoints
+    tags: [data-access]     # optional
 ```
 
 ### Interaction
@@ -403,8 +429,8 @@ services:
 ```yaml
 interactions:
   - id: api-gw-get-user       # unique ID
-    from: api-gateway.get-user-ep   # serviceId or serviceId.memberId
-    to: user-service.get-user       # serviceId or serviceId.memberId
+    from: api-gateway.get-user-ep   # serviceId.memberId
+    to: user-service.get-user       # serviceId.memberId
     type: grpc                      # see Interaction Types below
     label: GetUser            # short label shown on the graph edge
     description: API Gateway calls User Service to resolve user identity
@@ -418,10 +444,9 @@ interactions:
 
 | Format | Meaning |
 |--------|---------|
-| `service-id` | Service-level connection (no specific member) |
-| `service-id.member-id` | Connection to/from a specific endpoint, task, or event |
+| `service-id.member-id` | Connection to/from a specific endpoint, async task, event, or internal process |
 
-The `member-id` must match the `id` field of an endpoint, async task, or event within the referenced service.
+`service-id` alone (no member) is **not valid** — every interaction must name a specific member on both ends. The `member-id` must match the `id` field of an endpoint, async task, event, or internal process within the referenced service.
 
 ### Async Task Types
 
@@ -529,14 +554,15 @@ weavectl/
     │   │   ├── tracing.ts      # BFS call-graph traversal (+ tracing.test.ts)
     │   │   ├── layout.ts       # dagre auto-layout (+ layout.test.ts)
     │   │   ├── serializer.ts   # config ↔ React Flow nodes/edges (+ serializer.test.ts)
+    │   │   ├── refs.ts         # resolve a serviceId.memberId ref to a label + SelectedMember (+ refs.test.ts)
     │   │   └── interactionStyles.ts  # colors & dash patterns per type
     │   └── components/
-    │       ├── Canvas.tsx          # React Flow root
-    │       ├── ServiceNode.tsx     # expandable service node
+    │       ├── Canvas.tsx          # React Flow root; onConnect only accepts member-to-member drags
+    │       ├── ServiceNode.tsx     # expandable service node (Endpoints/Async/Events/Internal)
     │       ├── InteractionEdge.tsx # styled edge component
     │       ├── Sidebar.tsx         # service/interaction lists, search
-    │       ├── ServiceEditor.tsx   # CRUD for endpoints/tasks/events
-    │       ├── MemberEditor.tsx    # focused editor for a single member
+    │       ├── ServiceEditor.tsx   # CRUD for endpoints/tasks/events/internal processes
+    │       ├── MemberEditor.tsx    # focused editor for a single member (any of the 4 kinds)
     │       ├── InteractionEditor.tsx
     │       ├── FormControls.tsx    # shared Field/Input/Select/Textarea
     │       ├── Toolbar.tsx         # view mode/undo-redo/import/export/AI/theme
@@ -572,6 +598,10 @@ The Zustand store holds the `Config` object as the canonical state. React Flow n
 2. **Backward pass** — follows `to` references to find all callers (services that call this member)
 
 The result is two `Set<string>` of interaction IDs. Every edge reads its highlight state from these sets via `useEdgeHighlight()`. Nodes are highlighted if their service ID appears in the involved services set. Traversal only ever follows an exact `from`/`to` ref match — reaching a service through one of its members never fans out into that service's other, unrelated members.
+
+### Member-to-member connections
+
+Interactions must reference `serviceId.memberId` on both ends; a bare service id is not a valid endpoint. This is enforced at the UI layer rather than by validating the config after the fact: `ServiceNode`'s whole-card handles (`default-src`/`default-tgt`) are rendered with `isConnectable={false}` — kept only so a stray legacy bare ref still has somewhere to anchor its edge — and `Canvas`'s `onConnect` refuses to create an interaction unless both the source and target handle resolve to a real member. `InteractionEditor`'s member pickers only ever list endpoints, async tasks, events, and internal processes, never the service itself. When a call doesn't belong to one dedicated endpoint, model it as an **internal process** member (a repository layer, a rate limiter, a generic bus/queue interface, …) and connect through that.
 
 ### Undo / redo history
 

@@ -1,9 +1,12 @@
 import { useState } from 'react'
 import { Plus, Trash2, ChevronDown, ChevronRight, X } from 'lucide-react'
-import { Service, Endpoint, AsyncTask, Event, EndpointType, AsyncTaskType, ServiceShape } from '../types/schema'
+import {
+  Service, Endpoint, AsyncTask, Event, InternalProcess,
+  EndpointType, AsyncTaskType, ServiceShape,
+} from '../types/schema'
 import { useGraphStore } from '../store/graph'
 import {
-  SERVICE_COLORS, ENDPOINT_TYPE_COLORS, TASK_TYPE_COLORS,
+  SERVICE_COLORS, ENDPOINT_TYPE_COLORS, TASK_TYPE_COLORS, INTERNAL_PROCESS_COLOR,
   ENDPOINT_TYPES, TASK_TYPES, HTTP_METHODS,
 } from '../lib/interactionStyles'
 import { SHAPE_DEFS } from './ServiceNode'
@@ -203,6 +206,54 @@ function EventForm({
   )
 }
 
+function InternalProcessForm({
+  proc,
+  onChange,
+  onDelete,
+}: {
+  proc: InternalProcess
+  onChange: (patch: Partial<InternalProcess>) => void
+  onDelete: () => void
+}) {
+  const [open, setOpen] = useState(false)
+
+  return (
+    <div className="border border-gray-200 dark:border-gray-600 rounded-lg overflow-hidden">
+      <div
+        className="flex items-center gap-2 px-2 py-1.5 cursor-pointer hover:bg-gray-50 dark:hover:bg-gray-700"
+        onClick={() => setOpen((o) => !o)}
+      >
+        {open ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+        <span className="text-[10px] font-bold px-1 rounded text-white" style={{ background: INTERNAL_PROCESS_COLOR }}>
+          INTERNAL
+        </span>
+        <span className="text-sm font-medium text-gray-700 dark:text-gray-200 flex-1 truncate">{proc.name || '(unnamed)'}</span>
+        <button
+          className="text-red-400 dark:text-red-400 hover:text-red-600 dark:hover:text-red-300 p-0.5"
+          onClick={(e) => { e.stopPropagation(); onDelete() }}
+        >
+          <Trash2 size={12} />
+        </button>
+      </div>
+      {open && (
+        <div className="px-3 py-2 space-y-2 bg-gray-50 dark:bg-gray-900 border-t border-gray-200 dark:border-gray-600">
+          <Field label="Name">
+            <Input value={proc.name} onChange={(e) => onChange({ name: e.target.value })} />
+          </Field>
+          <Field label="Description">
+            <Textarea
+              value={proc.description ?? ''}
+              rows={2}
+              placeholder="e.g. Repository layer, rate limiter, generic bus interface…"
+              onChange={(e) => onChange({ description: e.target.value })}
+            />
+          </Field>
+        </div>
+      )}
+    </div>
+  )
+}
+
 export default function ServiceEditor({ serviceId }: { serviceId: string }) {
   const { config, updateService, removeService, selectService } = useGraphStore()
   const svc = config.services.find((s) => s.id === serviceId)
@@ -225,6 +276,11 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
   function addEvent() {
     const id = slug(`event-${(svc!.events?.length ?? 0) + 1}`)
     patch({ events: [...(svc!.events ?? []), { id, name: 'NewEvent', type: 'publish' }] })
+  }
+
+  function addInternalProcess() {
+    const id = slug(`internal-${(svc!.internal?.length ?? 0) + 1}`)
+    patch({ internal: [...(svc!.internal ?? []), { id, name: 'NewInternalProcess' }] })
   }
 
   return (
@@ -376,6 +432,33 @@ export default function ServiceEditor({ serviceId }: { serviceId: string }) {
                 patch({ events })
               }}
               onDelete={() => patch({ events: svc.events?.filter((_, j) => j !== i) })}
+            />
+          ))}
+        </div>
+      </div>
+
+      {/* Internal */}
+      <div>
+        <div className="flex items-center justify-between mb-1.5">
+          <span className="text-xs font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wide">Internal</span>
+          <button
+            className="flex items-center gap-1 text-xs text-slate-600 hover:text-slate-800 dark:text-slate-300 dark:hover:text-slate-100"
+            onClick={addInternalProcess}
+          >
+            <Plus size={12} /> Add
+          </button>
+        </div>
+        <div className="space-y-1.5">
+          {svc.internal?.map((proc, i) => (
+            <InternalProcessForm
+              key={proc.id}
+              proc={proc}
+              onChange={(p) => {
+                const updated = [...(svc.internal ?? [])]
+                updated[i] = { ...proc, ...p }
+                patch({ internal: updated })
+              }}
+              onDelete={() => patch({ internal: svc.internal?.filter((_, j) => j !== i) })}
             />
           ))}
         </div>

@@ -3,18 +3,17 @@ import { Handle, Position, NodeProps, Node } from '@xyflow/react'
 import {
   ChevronDown, ChevronRight, Globe, Zap, Radio, Settings,
   Server, Database, MessageSquare, Shield, Link, Layers, LucideIcon,
-  ArrowRight, ArrowLeft,
 } from 'lucide-react'
-import { Service, ServiceShape, Interaction } from '../types/schema'
+import { Service, ServiceShape } from '../types/schema'
 import { useGraphStore, useNodeHighlight } from '../store/graph'
-import { resolveRef } from '../lib/refs'
 import {
   ENDPOINT_TYPE_COLORS,
   TASK_TYPE_COLORS,
   EVENT_TYPE_COLORS,
+  INTERNAL_PROCESS_COLOR,
 } from '../lib/interactionStyles'
 
-export type ServiceNodeData = { service: Service; serviceInteractions: Interaction[] } & Record<string, unknown>
+export type ServiceNodeData = { service: Service } & Record<string, unknown>
 export type ServiceNodeType = Node<ServiceNodeData, 'service'>
 
 // ─── Shape definitions ────────────────────────────────────────────────────────
@@ -163,6 +162,31 @@ function EventRow({ svcId, id, name, type }: { svcId: string; id: string; name: 
   )
 }
 
+function InternalRow({ svcId, id, name }: { svcId: string; id: string; name: string }) {
+  const { selectMember, selectedMember } = useGraphStore()
+  const isSelected = selectedMember?.serviceId === svcId && selectedMember?.memberId === id
+
+  return (
+    <div
+      className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
+        ${isSelected ? 'bg-slate-200 dark:bg-slate-700 ring-1 ring-slate-400 dark:ring-slate-500' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+      onClick={(e) => {
+        e.stopPropagation()
+        selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'internal' })
+      }}
+    >
+      <Handle type="target" position={Position.Left} id={`${id}-tgt`}
+        style={{ left: -6, width: 8, height: 8, background: INTERNAL_PROCESS_COLOR, border: '1px solid white' }} />
+      <span className="inline-block px-1 rounded text-white font-mono text-[10px]" style={{ background: INTERNAL_PROCESS_COLOR }}>
+        INT
+      </span>
+      <span className="truncate text-gray-700 dark:text-gray-200">{name}</span>
+      <Handle type="source" position={Position.Right} id={`${id}-src`}
+        style={{ right: -6, width: 8, height: 8, background: INTERNAL_PROCESS_COLOR, border: '1px solid white' }} />
+    </div>
+  )
+}
+
 function Section({ label, icon, count, children }: {
   label: string; icon: React.ReactNode; count: number; children: React.ReactNode
 }) {
@@ -183,68 +207,6 @@ function Section({ label, icon, count, children }: {
   )
 }
 
-// ─── Internal process rows (service-level interactions) ───────────────────────
-
-function InternalSection({ serviceId, interactions }: { serviceId: string; interactions: Interaction[] }) {
-  const services = useGraphStore((s) => s.config.services)
-  const selectedInteractionId = useGraphStore((s) => s.selectedInteractionId)
-  const selectedMember = useGraphStore((s) => s.selectedMember)
-  const selectInteraction = useGraphStore((s) => s.selectInteraction)
-  const selectMember = useGraphStore((s) => s.selectMember)
-  if (interactions.length === 0) return null
-
-  return (
-    <div className="mx-1 mb-1 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 overflow-hidden">
-      <div className="flex items-center gap-1 px-2 py-0.5 text-[10px] font-semibold text-gray-400 dark:text-gray-500 uppercase tracking-wide bg-gray-100 dark:bg-gray-800 border-b border-dashed border-gray-300 dark:border-gray-600">
-        <Settings size={9} />
-        Internal
-      </div>
-      {interactions.map((ix) => {
-        const isOut = ix.from === serviceId
-        const otherRef = isOut ? ix.to : ix.from
-        const { label, member } = resolveRef(services, otherRef)
-        const isEditing = selectedInteractionId === ix.id
-        const isTracingMember =
-          !!member && selectedMember?.serviceId === member.serviceId && selectedMember?.memberId === member.memberId
-
-        return (
-          <div
-            key={ix.id}
-            className={`flex items-center gap-1.5 px-2 py-0.5 text-[11px] cursor-pointer transition-colors
-              ${isEditing ? 'bg-indigo-100 dark:bg-indigo-950' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
-            onClick={(e) => {
-              e.stopPropagation()
-              selectInteraction(isEditing ? null : ix.id)
-            }}
-            title="Click to edit this interaction"
-          >
-            {isOut
-              ? <ArrowRight size={10} className="text-indigo-400 shrink-0" />
-              : <ArrowLeft size={10} className="text-orange-400 shrink-0" />}
-            <span
-              className={`font-medium truncate
-                ${isTracingMember ? 'text-indigo-600 dark:text-indigo-400 underline' : 'text-gray-600 dark:text-gray-300'}
-                ${member ? 'hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline' : ''}`}
-              onClick={
-                member
-                  ? (e) => {
-                      e.stopPropagation()
-                      selectMember(isTracingMember ? null : member)
-                    }
-                  : undefined
-              }
-              title={member ? 'Click to trace this endpoint’s call chain' : undefined}
-            >
-              {label}
-            </span>
-            {ix.label && <span className="text-gray-400 dark:text-gray-500 truncate">· {ix.label}</span>}
-          </div>
-        )
-      })}
-    </div>
-  )
-}
-
 // ─── Database cylinder decoration ─────────────────────────────────────────────
 
 function DbTop({ color }: { color: string }) {
@@ -258,7 +220,7 @@ function DbTop({ color }: { color: string }) {
 // ─── Main node component ──────────────────────────────────────────────────────
 
 export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNodeType>) {
-  const { service, serviceInteractions } = data
+  const { service } = data
   const shape: ServiceShape = service.shape ?? 'service'
   const shapeDef = SHAPE_DEFS[shape] ?? SHAPE_DEFS.service
   const { Icon } = shapeDef
@@ -284,10 +246,12 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
     >
       {isDb && <DbTop color={service.color ?? '#22C55E'} />}
 
-      {/* Default handles */}
-      <Handle type="target" position={Position.Left} id="default-tgt"
+      {/* Whole-service handles — kept only so legacy bare-ref interactions (from before
+          service-level connections were disallowed) still have somewhere to anchor;
+          not connectable, so new connections can't be dragged from/to them. */}
+      <Handle type="target" position={Position.Left} id="default-tgt" isConnectable={false}
         style={{ top: 24, left: -6, width: 10, height: 10, background: service.color ?? '#CBD5E1', border: '2px solid white' }} />
-      <Handle type="source" position={Position.Right} id="default-src"
+      <Handle type="source" position={Position.Right} id="default-src" isConnectable={false}
         style={{ top: 24, right: -6, width: 10, height: 10, background: service.color ?? '#CBD5E1', border: '2px solid white' }} />
 
       {/* Header */}
@@ -309,9 +273,6 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
         </span>
       </div>
 
-      {/* Internal process rows (service-level interactions) — always on top */}
-      <InternalSection serviceId={service.id} interactions={serviceInteractions ?? []} />
-
       {/* Members */}
       <div className="px-1 pb-2 pt-1">
         <Section label="Endpoints" icon={<Globe size={10} />} count={service.endpoints?.length ?? 0}>
@@ -329,7 +290,12 @@ export default memo(function ServiceNode({ data, selected }: NodeProps<ServiceNo
             <EventRow key={ev.id} svcId={service.id} id={ev.id} name={ev.name} type={ev.type} />
           ))}
         </Section>
-        {(!service.endpoints?.length && !service.async?.length && !service.events?.length) && (
+        <Section label="Internal" icon={<Settings size={10} />} count={service.internal?.length ?? 0}>
+          {service.internal?.map((proc) => (
+            <InternalRow key={proc.id} svcId={service.id} id={proc.id} name={proc.name} />
+          ))}
+        </Section>
+        {(!service.endpoints?.length && !service.async?.length && !service.events?.length && !service.internal?.length) && (
           <div className="flex items-center gap-1 px-2 py-1 text-xs text-gray-400 dark:text-gray-500">
             <Settings size={10} />
             <span>No members — click Edit to add</span>

@@ -53,6 +53,19 @@ export interface Event {
   tags?: string[]
 }
 
+/**
+ * A connectable member of a service that isn't a public endpoint, async task, or domain
+ * event — e.g. a repository/DB-access layer, a rate limiter, or a generic bus/queue
+ * interface. Interactions must reference a specific member (endpoint, async task, event,
+ * or internal process); a bare service ID is not a valid connection endpoint.
+ */
+export interface InternalProcess {
+  id: string
+  name: string
+  description?: string
+  tags?: string[]
+}
+
 export type ServiceShape = 'service' | 'database' | 'queue' | 'gateway' | 'cache' | 'external'
 
 export interface Service {
@@ -66,6 +79,7 @@ export interface Service {
   endpoints?: Endpoint[]
   async?: AsyncTask[]
   events?: Event[]
+  internal?: InternalProcess[]
 }
 
 export interface Interaction {
@@ -91,5 +105,5 @@ export interface Config {
 export interface SelectedMember {
   serviceId: string
   memberId: string
-  memberType: 'endpoint' | 'async' | 'event'
+  memberType: 'endpoint' | 'async' | 'event' | 'internal'
 }

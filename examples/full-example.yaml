@@ -6,12 +6,15 @@
 #   • all endpoint types (http, grpc, graphql, websocket)
 #   • all async task types (kafka_consumer/producer, amqp_consumer/producer, cron, worker)
 #   • events (publish / subscribe)
+#   • internal processes — every interaction targets a specific member (endpoint, async
+#     task, event, or internal process); there are no service-to-service connections.
+#     Cross-cutting concerns that aren't a public endpoint (a repository/DB-access layer,
+#     a rate limiter, a generic bus/queue interface, …) are modelled as "internal"
+#     members — see e.g. order-service.order-repo or kafka.message-bus. Add your own via
+#     the service editor's Internal section, or by clicking "+ Add" in a node's Internal
+#     card in the UI.
 #   • async: true on fire-and-forget interactions
 #   • metadata on interactions
-#   • an "internal" connection whose far side is a specific endpoint
-#     (search-elasticsearch → elasticsearch.search-index) — edit it, or click
-#     "Elasticsearch · SearchIndex" right in Search Service's Internal card to
-#     trace/highlight it, same as clicking a normal endpoint would
 #
 # Import with:   weavectl serve --config examples/full-example.yaml
 # Or use:        Import → Upload file  inside the UI
@@ -47,6 +50,10 @@ services:
         type: websocket
         path: /ws
         description: "Persistent connection for real-time order/delivery updates"
+    internal:
+      - id: rate-limiter
+        name: RateLimiter
+        description: "Cross-cutting request throttling shared by all gateway endpoints"
 
   # ── shape: service (default) ─────────────────────────────────────────────────
   - id: user-service
@@ -80,6 +87,13 @@ services:
         name: UserUpdated
         type: publish
         topic: user.events.updated
+    internal:
+      - id: user-repo
+        name: UserRepository
+        description: "DB-access layer shared by GetUser/CreateUser/Authenticate — not itself a public endpoint"
+      - id: session-store
+        name: SessionStore
+        description: "Reads/writes session tokens; used internally during authentication"
 
   - id: order-service
     name: Order Service
@@ -121,6 +135,10 @@ services:
         name: OrderCompleted
         type: publish
         topic: orders.completed
+    internal:
+      - id: order-repo
+        name: OrderRepository
+        description: "DB-access layer for order records, used across multiple endpoints"
 
   - id: payment-service
     name: Payment Service
@@ -161,6 +179,13 @@ services:
         name: PaymentFailed
         type: publish
         topic: payments.results
+    internal:
+      - id: payment-repo
+        name: PaymentRepository
+        description: "DB-access layer for payment/reconciliation records"
+      - id: receipt-notifier
+        name: ReceiptNotifier
+        description: "Fire-and-forget side effect that queues an SMS receipt after a successful charge"
 
   - id: notification-service
     name: Notification Service
@@ -188,6 +213,10 @@ services:
         type: cron
         schedule: "0 2 * * *"
         description: "Purges notification records older than 90 days"
+    internal:
+      - id: realtime-push
+        name: RealtimePushHandler
+        description: "Accepts the gateway's WebSocket connection for real-time order/delivery updates"
 
   - id: search-service
     name: Search Service
@@ -206,6 +235,10 @@ services:
         type: kafka_consumer
         topic: catalog.product-updated
         description: "Re-indexes changed products in Elasticsearch"
+    internal:
+      - id: index-client
+        name: SearchIndexClient
+        description: "Generic Elasticsearch client used by both the Search resolver and the indexer"
 
   # ── shape: database ──────────────────────────────────────────────────────────
   - id: postgres
@@ -246,6 +279,10 @@ services:
     shape: cache
     color: "#DC382D"
     description: "Session tokens, rate-limit counters, and API response caching."
+    internal:
+      - id: cache-store
+        name: CacheStore
+        description: "Generic key-value interface used for rate-limit counters and session tokens"
 
   # ── shape: queue ─────────────────────────────────────────────────────────────
   - id: kafka
@@ -253,12 +290,20 @@ services:
     shape: queue
     color: "#231F20"
     description: "Central event bus. Topics: orders.*, payments.*, notifications.*, catalog.*"
+    internal:
+      - id: message-bus
+        name: MessageBus
+        description: "Generic pub/sub interface shared by every topic on this cluster"
 
   - id: rabbitmq
     name: RabbitMQ
     shape: queue
     color: "#FF6600"
     description: "Task queues for SMS dispatch and push notifications."
+    internal:
+      - id: message-queue
+        name: MessageQueue
+        description: "Generic queue interface shared by every queue on this broker"
 
   # ── shape: external ──────────────────────────────────────────────────────────
   - id: stripe
@@ -325,20 +370,20 @@ interactions:
 
   - id: gw-ws-push
     from: api-gateway.ws-ep
-    to: notification-service
+    to: notification-service.realtime-push
     type: websocket
     label: Real-time push
     async: true
 
   - id: gw-redis-ratelimit
-    from: api-gateway
-    to: redis
+    from: api-gateway.rate-limiter
+    to: redis.cache-store
     type: redis
     label: rate-limit counters
 
   # ── User Service ─────────────────────────────────────────────────────────────
   - id: user-postgres
-    from: user-service
+    from: user-service.user-repo
     to: postgres.users-db
     type: database
     label: CRUD users
@@ -347,14 +392,14 @@ interactions:
       pool_size: 10
 
   - id: user-redis-session
-    from: user-service
-    to: redis
+    from: user-service.session-store
+    to: redis.cache-store
     type: redis
     label: session tokens
 
   - id: user-kafka-created
     from: user-service.user-created-evt
-    to: kafka
+    to: kafka.message-bus
     type: kafka
     label: user.events.created
     async: true
@@ -367,27 +412,27 @@ interactions:
     label: GetUser (validate)
 
   - id: order-postgres
-    from: order-service
+    from: order-service.order-repo
     to: postgres.orders-db
     type: database
     label: CRUD orders
 
   - id: order-kafka-created
     from: order-service.order-created-evt
-    to: kafka
+    to: kafka.message-bus
     type: kafka
     label: orders.created
     async: true
 
   - id: kafka-payment-consumer
-    from: kafka
+    from: kafka.message-bus
     to: payment-service.order-consumer
     type: kafka
     label: orders.created
     async: true
 
   - id: kafka-order-payment-result
-    from: kafka
+    from: kafka.message-bus
     to: order-service.payment-result-consumer
     type: kafka
     label: payments.results
@@ -411,21 +456,21 @@ interactions:
     label: POST /v1/refunds
 
   - id: payment-postgres
-    from: payment-service
+    from: payment-service.payment-repo
     to: postgres.payments-db
     type: database
     label: CRUD payments
 
   - id: payment-kafka-result
     from: payment-service.payment-succeeded-evt
-    to: kafka
+    to: kafka.message-bus
     type: kafka
     label: payments.results
     async: true
 
   - id: payment-rabbitmq-sms
-    from: payment-service
-    to: rabbitmq
+    from: payment-service.receipt-notifier
+    to: rabbitmq.message-queue
     type: amqp
     label: notifications.sms
     async: true
@@ -433,14 +478,14 @@ interactions:
 
   # ── Notification Service ──────────────────────────────────────────────────────
   - id: kafka-notification-email
-    from: kafka
+    from: kafka.message-bus
     to: notification-service.email-consumer
     type: kafka
     label: notifications.email
     async: true
 
   - id: rabbitmq-notification-sms
-    from: rabbitmq
+    from: rabbitmq.message-queue
     to: notification-service.sms-consumer
     type: amqp
     label: notifications.sms
@@ -460,17 +505,17 @@ interactions:
 
   # ── Search Service ────────────────────────────────────────────────────────────
   - id: search-elasticsearch
-    from: search-service
+    from: search-service.index-client
     to: elasticsearch.search-index
     type: database
     label: index / query
     description: >
-      Search Service's own side stays a whole-service reference, so this still shows up in
-      its Internal card — but the far side now names a specific Elasticsearch endpoint, so
-      it's also a real, traceable edge on the canvas.
+      Both sides now name a specific member (an internal process on Search Service, a
+      real endpoint on Elasticsearch) — click either one, in its service's Internal or
+      Endpoints card, to trace/highlight this edge.
 
   - id: catalog-kafka-search
-    from: kafka
+    from: kafka.message-bus
     to: search-service.product-indexer
     type: kafka
     label: catalog.product-updated

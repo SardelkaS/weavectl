@@ -69,25 +69,18 @@ export default function Canvas() {
 
   const onConnect = useCallback(
     (connection: Connection) => {
-      const fromSvcId = connection.source ?? ''
-      const toSvcId = connection.target ?? ''
-      const fromHandle = connection.sourceHandle ?? 'default-src'
-      const toHandle = connection.targetHandle ?? 'default-tgt'
+      const fromMember = (connection.sourceHandle ?? '').replace('-src', '')
+      const toMember = (connection.targetHandle ?? '').replace('-tgt', '')
 
-      const fromMember = fromHandle.replace('-src', '')
-      const toMember = toHandle.replace('-tgt', '')
-
-      const fromRef = fromMember && fromMember !== 'default'
-        ? `${fromSvcId}.${fromMember}`
-        : fromSvcId
-      const toRef = toMember && toMember !== 'default'
-        ? `${toSvcId}.${toMember}`
-        : toSvcId
+      // Whole-service handles are not connectable (see ServiceNode), so this should never
+      // fire for them — guard anyway: interactions must target a specific endpoint, async
+      // task, event, or internal process, never a bare service.
+      if (!fromMember || fromMember === 'default' || !toMember || toMember === 'default') return
 
       const ix: Interaction = {
         id: `ix-${Date.now()}`,
-        from: fromRef,
-        to: toRef,
+        from: `${connection.source}.${fromMember}`,
+        to: `${connection.target}.${toMember}`,
         type: 'http',
         label: '',
       }

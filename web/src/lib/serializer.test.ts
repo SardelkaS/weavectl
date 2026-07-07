@@ -58,44 +58,33 @@ describe('configToFlow', () => {
     expect(edges[0].targetHandle).toBe('y-tgt')
   })
 
-  it('routes service-level (bare-to-bare) interactions onto node data instead of edges', () => {
+  it('still renders a legacy bare-to-bare interaction as an edge, anchored on the non-connectable default handles', () => {
+    // New interactions can no longer be created this way (see Canvas.onConnect), but old
+    // configs that predate that rule shouldn't have the edge silently vanish.
     const cfg: Config = {
       version: '1.0',
       name: 'test',
       services: [svc('a'), svc('b')],
-      interactions: [ix('a-internal-to-b', 'a', 'b')],
+      interactions: [ix('a-to-b', 'a', 'b')],
     }
 
-    const { nodes, edges } = configToFlow(cfg)
+    const { edges } = configToFlow(cfg)
 
-    expect(edges).toHaveLength(0)
-    const nodeA = nodes.find((n) => n.id === 'a') as ServiceNodeType
-    const nodeB = nodes.find((n) => n.id === 'b') as ServiceNodeType
-    expect(nodeA.data.serviceInteractions).toHaveLength(1)
-    expect(nodeB.data.serviceInteractions).toHaveLength(1)
-    expect(nodeA.data.serviceInteractions[0].id).toBe('a-internal-to-b')
+    expect(edges).toHaveLength(1)
+    expect(edges[0]).toMatchObject({ source: 'a', target: 'b', sourceHandle: 'default-src', targetHandle: 'default-tgt' })
   })
 
-  it('lists a half-bare interaction (one bare side, one specific endpoint) as internal for the bare side only, while still rendering it as an edge', () => {
+  it('passes internal-process members through onto node data alongside endpoints/async/events', () => {
     const cfg: Config = {
       version: '1.0',
       name: 'test',
-      services: [svc('a'), svc('b')],
-      interactions: [ix('a-to-b-y', 'a', 'b.y')],
+      services: [svc('a', { internal: [{ id: 'db-access', name: 'DbAccess' }] })],
+      interactions: [],
     }
 
-    const { nodes, edges } = configToFlow(cfg)
-
-    // Still a real, connectable edge — the specific side has a handle to attach to.
-    expect(edges).toHaveLength(1)
-    expect(edges[0]).toMatchObject({ source: 'a', target: 'b', targetHandle: 'y-tgt' })
-
-    // Internal card: only service "a" (the bare side) lists it; "b" (specific side) does not.
+    const { nodes } = configToFlow(cfg)
     const nodeA = nodes.find((n) => n.id === 'a') as ServiceNodeType
-    const nodeB = nodes.find((n) => n.id === 'b') as ServiceNodeType
-    expect(nodeA.data.serviceInteractions).toHaveLength(1)
-    expect(nodeA.data.serviceInteractions[0].id).toBe('a-to-b-y')
-    expect(nodeB.data.serviceInteractions).toHaveLength(0)
+    expect(nodeA.data.service.internal).toEqual([{ id: 'db-access', name: 'DbAccess' }])
   })
 
   it('falls back to (0,0) position when a service has none set', () => {

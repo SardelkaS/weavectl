@@ -13,16 +13,17 @@ type Config struct {
 type ServiceShape = string
 
 type Service struct {
-	ID          string      `json:"id"                    yaml:"id"`
-	Name        string      `json:"name"                  yaml:"name"`
-	Description string      `json:"description,omitempty" yaml:"description,omitempty"`
-	Color       string      `json:"color,omitempty"       yaml:"color,omitempty"`
-	Shape       string      `json:"shape,omitempty"       yaml:"shape,omitempty"`
-	Tags        []string    `json:"tags,omitempty"        yaml:"tags,omitempty"`
-	Position    Position    `json:"position,omitempty"    yaml:"position,omitempty"`
-	Endpoints   []Endpoint  `json:"endpoints,omitempty"   yaml:"endpoints,omitempty"`
-	Async       []AsyncTask `json:"async,omitempty"       yaml:"async,omitempty"`
-	Events      []Event     `json:"events,omitempty"      yaml:"events,omitempty"`
+	ID          string            `json:"id"                    yaml:"id"`
+	Name        string            `json:"name"                  yaml:"name"`
+	Description string            `json:"description,omitempty" yaml:"description,omitempty"`
+	Color       string            `json:"color,omitempty"       yaml:"color,omitempty"`
+	Shape       string            `json:"shape,omitempty"       yaml:"shape,omitempty"`
+	Tags        []string          `json:"tags,omitempty"        yaml:"tags,omitempty"`
+	Position    Position          `json:"position,omitempty"    yaml:"position,omitempty"`
+	Endpoints   []Endpoint        `json:"endpoints,omitempty"   yaml:"endpoints,omitempty"`
+	Async       []AsyncTask       `json:"async,omitempty"       yaml:"async,omitempty"`
+	Events      []Event           `json:"events,omitempty"      yaml:"events,omitempty"`
+	Internal    []InternalProcess `json:"internal,omitempty"    yaml:"internal,omitempty"`
 }
 
 type Position struct {
@@ -56,6 +57,18 @@ type Event struct {
 	Name        string   `json:"name"                  yaml:"name"`
 	Type        string   `json:"type"                  yaml:"type"` // publish | subscribe
 	Topic       string   `json:"topic,omitempty"       yaml:"topic,omitempty"`
+	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
+	Tags        []string `json:"tags,omitempty"        yaml:"tags,omitempty"`
+}
+
+// InternalProcess is a connectable member of a service that isn't a public endpoint,
+// async task, or domain event — e.g. a repository/DB-access layer, a rate limiter, or a
+// generic bus/queue interface. Interactions must reference a specific member (endpoint,
+// async task, event, or internal process); a bare service ID is not a valid connection
+// endpoint.
+type InternalProcess struct {
+	ID          string   `json:"id"                    yaml:"id"`
+	Name        string   `json:"name"                  yaml:"name"`
 	Description string   `json:"description,omitempty" yaml:"description,omitempty"`
 	Tags        []string `json:"tags,omitempty"        yaml:"tags,omitempty"`
 }

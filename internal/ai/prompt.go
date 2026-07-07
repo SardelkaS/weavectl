@@ -17,8 +17,10 @@ workers, and all inter-service communications.
 - Return **only** valid YAML (or JSON) — no prose, no markdown fences.
 - The top-level structure must match the schema below exactly.
 - Use **kebab-case** for all ` + "`id`" + ` fields.
-- Every ` + "`interaction.from`" + ` and ` + "`interaction.to`" + ` must reference an ` + "`id`" + ` that
-  exists in the ` + "`services`" + ` list (and optionally a member id within that service).
+- Every ` + "`interaction.from`" + ` and ` + "`interaction.to`" + ` must be ` + "`serviceId.memberId`" + `, where
+  ` + "`memberId`" + ` is the id of a specific endpoint, async task, event, or internal process.
+  A bare service id (no member) is **never** valid — see "Internal processes" below for
+  what to use when a call doesn't belong to a specific public endpoint.
 
 ---
 
@@ -87,13 +89,25 @@ services:
         description: string
         tags: [billing]             # optional free-form labels
 
+    # --- Internal processes ---
+    # Cross-cutting capabilities that aren't a public endpoint, async task, or event —
+    # e.g. a repository/DB-access layer, a rate limiter, a generic bus/queue interface.
+    # Use one of these as the from/to member id whenever a call doesn't belong to one
+    # specific public endpoint. See "Internal processes" below for when to reach for this.
+    internal:
+      - id: string
+        name: string
+        description: string
+        tags: [team-payments]       # optional free-form labels
+
 interactions:
   - id: string             # unique kebab-case identifier  (REQUIRED)
 
-    # Address format: "serviceId"  OR  "serviceId.memberId"
-    # memberId is the id of an endpoint, async task, or event.
-    from: source-service-id.endpoint-or-task-id
-    to:   target-service-id.endpoint-or-task-id
+    # Address format: "serviceId.memberId" — ALWAYS include the member id.
+    # memberId is the id of an endpoint, async task, event, or internal process.
+    # A bare "serviceId" with no member is not valid.
+    from: source-service-id.endpoint-task-event-or-internal-id
+    to:   target-service-id.endpoint-task-event-or-internal-id
 
     # type values:
     #   http       — REST HTTP call
@@ -117,6 +131,18 @@ interactions:
 ` + "```" + `
 
 ---
+
+## Internal processes — required whenever a call has no specific public endpoint
+
+Every ` + "`interaction.from`" + ` / ` + "`interaction.to`" + ` must name a specific member. Most calls map
+naturally onto an endpoint, async task, or event — but plenty of real code paths don't:
+a repository/DB-access layer used by several endpoints, rate-limiting middleware, a
+generic pub/sub or cache client, a background reconciliation routine with no queue of
+its own. **Never leave ` + "`from`" + `/` + "`to`" + ` as a bare service id to route around this** — add an
+` + "`internal`" + ` entry to that service (just ` + "`id`" + `/` + "`name`" + `, optionally ` + "`description`" + `/` + "`tags`" + `) and
+reference it, e.g. ` + "`order-service.order-repo`" + ` instead of ` + "`order-service`" + `. Prefer an
+existing endpoint/task/event when the call genuinely belongs to one; reach for
+` + "`internal`" + ` only for the cross-cutting, no-dedicated-entry-point case.
 
 ## Tags (optional, but recommended)
 
@@ -164,26 +190,43 @@ Work through the codebase systematically before writing any YAML.
 - **Cron**: ` + "`@Scheduled`" + `, ` + "`cron.AddFunc`" + `, ` + "`APScheduler`" + `. Record the cron expression.
 - **Worker**: ` + "`celery.task`" + `, ` + "`sidekiq`" + `, ` + "`BullMQ`" + `, generic queue consumers.
 
-### 5. Trace inter-service interactions
-For each service, scan for calls to OTHER services:
+### 5. Identify internal processes
+Before tracing calls, spot the code paths that won't map onto a public endpoint/task/event:
+- Repository/DAO/service layers used internally by several endpoints (` + "`UserRepository`" + `,
+  ` + "`OrderDAO`" + `) → one ` + "`internal`" + ` entry each, on the service that owns them.
+- Cross-cutting middleware: rate limiters, circuit breakers, generic outbound HTTP/gRPC
+  clients wrapping many call sites.
+- Queue/broker services (Kafka, RabbitMQ, SQS, …) that expose no dedicated endpoints of
+  their own → add one ` + "`internal`" + ` entry representing their generic pub/sub interface
+  (e.g. ` + "`kafka.message-bus`" + `) unless distinct topics genuinely warrant separate members.
+
+### 6. Trace inter-service interactions
+For each service, scan for calls to OTHER services. Every ` + "`from`" + `/` + "`to`" + ` below must be a
+specific member id — use the internal processes from step 5 whenever the call doesn't
+belong to one specific public endpoint:
 
 - **HTTP clients**: ` + "`http.Get`" + `, ` + "`axios.post`" + `, ` + "`requests.get`" + `, ` + "`fetch`" + `, ` + "`RestTemplate`" + `.
   Follow the URL to identify the target service.
 - **gRPC clients**: stub instantiation (` + "`NewUserServiceClient`" + `, ` + "`grpc.Dial`" + `).
   The method called → ` + "`to`" + ` = ` + "`targetService.endpointId`" + `.
-- **Kafka producers**: ` + "`producer.send(topic, …)`" + ` → ` + "`from`" + ` = this service, ` + "`to`" + ` = kafka.
-  Then who consumes that topic? → add a second interaction kafka → consumer.
-- **Database**: ORM model definitions, ` + "`db.Query`" + `, ` + "`repository.save`" + ` → type ` + "`database`" + `.
+- **Kafka producers**: ` + "`producer.send(topic, …)`" + ` → ` + "`from`" + ` = the producing endpoint/task, or
+  this service's message-bus internal process if no specific one produces it; ` + "`to`" + ` = the
+  broker's internal process (e.g. ` + "`kafka.message-bus`" + `).
+  Then who consumes that topic? → add a second interaction from the broker's internal
+  process to the consumer's async task.
+- **Database**: ORM model definitions, ` + "`db.Query`" + `, ` + "`repository.save`" + ` → type ` + "`database`" + `,
+  ` + "`from`" + ` = the calling endpoint or a repository internal process, never the bare service.
 - **Redis**: ` + "`redis.Get`" + `, ` + "`redis.Set`" + `, ` + "`PUBLISH`" + `, ` + "`SUBSCRIBE`" + ` → type ` + "`redis`" + `.
 
-### 6. Identify domain events
+### 7. Identify domain events
 - Classes/interfaces named ` + "`*Event`" + `, ` + "`*Created`" + `, ` + "`*Updated`" + `, ` + "`*Deleted`" + `.
 - Event bus registrations (` + "`eventBus.publish`" + `, ` + "`@EventHandler`" + `).
 - These become ` + "`events`" + ` entries with ` + "`type: publish`" + ` or ` + "`type: subscribe`" + `.
 
-### 7. Quality checklist before outputting
+### 8. Quality checklist before outputting
 - [ ] Every service that is called has an entry in ` + "`services`" + `.
-- [ ] Every ` + "`interaction.from`" + ` and ` + "`to`" + ` resolves to a real ` + "`id`" + `.
+- [ ] Every ` + "`interaction.from`" + ` and ` + "`to`" + ` is ` + "`serviceId.memberId`" + ` and resolves to a real
+      endpoint/task/event/internal-process id — never a bare service id.
 - [ ] Kafka/AMQP interactions have ` + "`async: true`" + `.
 - [ ] Database services use ` + "`shape: database`" + `.
 - [ ] External third-party systems use ` + "`shape: external`" + `.

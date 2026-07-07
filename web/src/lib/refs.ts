@@ -31,5 +31,9 @@ export function resolveRef(services: Service[], ref: string): ResolvedRef {
   if (event) {
     return { label: `${serviceName} · ${event.name}`, member: { serviceId: svcId, memberId, memberType: 'event' } }
   }
+  const internal = svc?.internal?.find((p) => p.id === memberId)
+  if (internal) {
+    return { label: `${serviceName} · ${internal.name}`, member: { serviceId: svcId, memberId, memberType: 'internal' } }
+  }
   return { label: `${serviceName} · ${memberId}` }
 }

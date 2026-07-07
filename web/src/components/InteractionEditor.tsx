@@ -18,10 +18,9 @@ function MemberSelect({
   return (
     <Field label={label}>
       <Select value={value} onChange={(e) => onChange(e.target.value)}>
-        <option value="">— select —</option>
+        <option value="">— select an endpoint, task, event, or internal process —</option>
         {config.services.map((svc) => (
           <optgroup key={svc.id} label={svc.name}>
-            <option value={svc.id}>{svc.name} (service)</option>
             {svc.endpoints?.map((ep) => (
               <option key={ep.id} value={`${svc.id}.${ep.id}`}>
                 ↳ {ep.name} [{ep.type}]
@@ -35,6 +34,11 @@ function MemberSelect({
             {svc.events?.map((ev) => (
               <option key={ev.id} value={`${svc.id}.${ev.id}`}>
                 ↳ {ev.name} [{ev.type}]
+              </option>
+            ))}
+            {svc.internal?.map((proc) => (
+              <option key={proc.id} value={`${svc.id}.${proc.id}`}>
+                ↳ {proc.name} [internal]
               </option>
             ))}
           </optgroup>
