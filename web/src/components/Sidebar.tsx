@@ -3,26 +3,13 @@ import { Plus, Eye, Search, X } from 'lucide-react'
 import { useGraphStore } from '../store/graph'
 import { Service } from '../types/schema'
 import { SERVICE_COLORS, INTERACTION_STYLES } from '../lib/interactionStyles'
+import { resolveRef } from '../lib/refs'
 import ServiceEditor from './ServiceEditor'
 import InteractionEditor from './InteractionEditor'
 import MemberEditor from './MemberEditor'
 
 function slug(name: string) {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-}
-
-/** Resolve a `serviceId` or `serviceId.memberId` ref to a human-readable label. */
-function resolveRef(services: Service[], ref: string): string {
-  const [svcId, ...rest] = ref.split('.')
-  const memberId = rest.join('.')
-  const svc = services.find((s) => s.id === svcId)
-  const serviceName = svc?.name ?? svcId
-  if (!memberId) return serviceName
-  const member =
-    svc?.endpoints?.find((e) => e.id === memberId) ??
-    svc?.async?.find((t) => t.id === memberId) ??
-    svc?.events?.find((e) => e.id === memberId)
-  return `${serviceName} · ${member?.name ?? memberId}`
 }
 
 function ServiceItem({ svc }: { svc: Service }) {
@@ -82,8 +69,8 @@ export default function Sidebar() {
     : config.services
   const filteredInteractions = q
     ? config.interactions.filter((ix) => {
-        const fromLabel = resolveRef(config.services, ix.from)
-        const toLabel = resolveRef(config.services, ix.to)
+        const fromLabel = resolveRef(config.services, ix.from).label
+        const toLabel = resolveRef(config.services, ix.to).label
         return (
           fromLabel.toLowerCase().includes(q) ||
           toLabel.toLowerCase().includes(q) ||
@@ -180,7 +167,7 @@ export default function Sidebar() {
                       >
                         <div className="w-2 h-2 rounded-full shrink-0" style={{ background: style?.color }} />
                         <span className="truncate text-gray-600 dark:text-gray-300">
-                          {resolveRef(config.services, ix.from)} → {resolveRef(config.services, ix.to)}
+                          {resolveRef(config.services, ix.from).label} → {resolveRef(config.services, ix.to).label}
                         </span>
                       </button>
                     )

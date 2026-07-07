@@ -4,7 +4,6 @@ type Config struct {
 	Version      string        `json:"version"               yaml:"version"`
 	Name         string        `json:"name"                  yaml:"name"`
 	Description  string        `json:"description,omitempty" yaml:"description,omitempty"`
-	AIPrompt     string        `json:"ai_prompt,omitempty"   yaml:"ai_prompt,omitempty"`
 	Services     []Service     `json:"services"              yaml:"services"`
 	Interactions []Interaction `json:"interactions"          yaml:"interactions"`
 }

@@ -7,6 +7,7 @@ import {
 } from 'lucide-react'
 import { Service, ServiceShape, Interaction } from '../types/schema'
 import { useGraphStore, useNodeHighlight } from '../store/graph'
+import { resolveRef } from '../lib/refs'
 import {
   ENDPOINT_TYPE_COLORS,
   TASK_TYPE_COLORS,
@@ -186,9 +187,11 @@ function Section({ label, icon, count, children }: {
 
 function InternalSection({ serviceId, interactions }: { serviceId: string; interactions: Interaction[] }) {
   const services = useGraphStore((s) => s.config.services)
+  const selectedInteractionId = useGraphStore((s) => s.selectedInteractionId)
+  const selectedMember = useGraphStore((s) => s.selectedMember)
+  const selectInteraction = useGraphStore((s) => s.selectInteraction)
+  const selectMember = useGraphStore((s) => s.selectMember)
   if (interactions.length === 0) return null
-
-  const nameOf = (id: string) => services.find((s) => s.id === id)?.name ?? id
 
   return (
     <div className="mx-1 mb-1 rounded-lg border border-dashed border-gray-300 dark:border-gray-600 bg-gray-50 dark:bg-gray-900 overflow-hidden">
@@ -198,13 +201,42 @@ function InternalSection({ serviceId, interactions }: { serviceId: string; inter
       </div>
       {interactions.map((ix) => {
         const isOut = ix.from === serviceId
-        const otherId = isOut ? ix.to : ix.from
+        const otherRef = isOut ? ix.to : ix.from
+        const { label, member } = resolveRef(services, otherRef)
+        const isEditing = selectedInteractionId === ix.id
+        const isTracingMember =
+          !!member && selectedMember?.serviceId === member.serviceId && selectedMember?.memberId === member.memberId
+
         return (
-          <div key={ix.id} className="flex items-center gap-1.5 px-2 py-0.5 text-[11px] text-gray-500 dark:text-gray-400">
+          <div
+            key={ix.id}
+            className={`flex items-center gap-1.5 px-2 py-0.5 text-[11px] cursor-pointer transition-colors
+              ${isEditing ? 'bg-indigo-100 dark:bg-indigo-950' : 'hover:bg-gray-100 dark:hover:bg-gray-800'}`}
+            onClick={(e) => {
+              e.stopPropagation()
+              selectInteraction(isEditing ? null : ix.id)
+            }}
+            title="Click to edit this interaction"
+          >
             {isOut
               ? <ArrowRight size={10} className="text-indigo-400 shrink-0" />
               : <ArrowLeft size={10} className="text-orange-400 shrink-0" />}
-            <span className="font-medium text-gray-600 dark:text-gray-300 truncate">{nameOf(otherId)}</span>
+            <span
+              className={`font-medium truncate
+                ${isTracingMember ? 'text-indigo-600 dark:text-indigo-400 underline' : 'text-gray-600 dark:text-gray-300'}
+                ${member ? 'hover:text-indigo-600 dark:hover:text-indigo-400 hover:underline' : ''}`}
+              onClick={
+                member
+                  ? (e) => {
+                      e.stopPropagation()
+                      selectMember(isTracingMember ? null : member)
+                    }
+                  : undefined
+              }
+              title={member ? 'Click to trace this endpoint’s call chain' : undefined}
+            >
+              {label}
+            </span>
             {ix.label && <span className="text-gray-400 dark:text-gray-500 truncate">· {ix.label}</span>}
           </div>
         )

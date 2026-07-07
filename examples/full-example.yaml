@@ -8,6 +8,10 @@
 #   • events (publish / subscribe)
 #   • async: true on fire-and-forget interactions
 #   • metadata on interactions
+#   • an "internal" connection whose far side is a specific endpoint
+#     (search-elasticsearch → elasticsearch.search-index) — edit it, or click
+#     "Elasticsearch · SearchIndex" right in Search Service's Internal card to
+#     trace/highlight it, same as clicking a normal endpoint would
 #
 # Import with:   weavectl serve --config examples/full-example.yaml
 # Or use:        Import → Upload file  inside the UI
@@ -228,6 +232,13 @@ services:
     shape: database
     color: "#F5A623"
     description: "Product catalogue search index."
+    endpoints:
+      - id: search-index
+        name: SearchIndex
+        type: http
+        method: POST
+        path: /products/_search
+        description: "Full-text product search query endpoint"
 
   # ── shape: cache ─────────────────────────────────────────────────────────────
   - id: redis
@@ -450,9 +461,13 @@ interactions:
   # ── Search Service ────────────────────────────────────────────────────────────
   - id: search-elasticsearch
     from: search-service
-    to: elasticsearch
+    to: elasticsearch.search-index
     type: database
     label: index / query
+    description: >
+      Search Service's own side stays a whole-service reference, so this still shows up in
+      its Internal card — but the far side now names a specific Elasticsearch endpoint, so
+      it's also a real, traceable edge on the canvas.
 
   - id: catalog-kafka-search
     from: kafka

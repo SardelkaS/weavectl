@@ -353,7 +353,6 @@ The config is a single JSON or YAML file. All fields except `version`, `name`, `
 version: "1.0"
 name: "My Microservice Architecture"
 description: "Optional description of the system"
-ai_prompt: "Optional extra context for AI generation"
 
 services:
   - ...

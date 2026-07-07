@@ -76,6 +76,28 @@ describe('configToFlow', () => {
     expect(nodeA.data.serviceInteractions[0].id).toBe('a-internal-to-b')
   })
 
+  it('lists a half-bare interaction (one bare side, one specific endpoint) as internal for the bare side only, while still rendering it as an edge', () => {
+    const cfg: Config = {
+      version: '1.0',
+      name: 'test',
+      services: [svc('a'), svc('b')],
+      interactions: [ix('a-to-b-y', 'a', 'b.y')],
+    }
+
+    const { nodes, edges } = configToFlow(cfg)
+
+    // Still a real, connectable edge — the specific side has a handle to attach to.
+    expect(edges).toHaveLength(1)
+    expect(edges[0]).toMatchObject({ source: 'a', target: 'b', targetHandle: 'y-tgt' })
+
+    // Internal card: only service "a" (the bare side) lists it; "b" (specific side) does not.
+    const nodeA = nodes.find((n) => n.id === 'a') as ServiceNodeType
+    const nodeB = nodes.find((n) => n.id === 'b') as ServiceNodeType
+    expect(nodeA.data.serviceInteractions).toHaveLength(1)
+    expect(nodeA.data.serviceInteractions[0].id).toBe('a-to-b-y')
+    expect(nodeB.data.serviceInteractions).toHaveLength(0)
+  })
+
   it('falls back to (0,0) position when a service has none set', () => {
     const cfg: Config = {
       version: '1.0',

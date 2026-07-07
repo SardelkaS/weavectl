@@ -34,6 +34,7 @@ services:
     name: string         # display name                  (REQUIRED)
     description: string  # optional
     color: "#HEX"        # optional brand colour
+    tags: [team-payments, tier-1]   # optional free-form labels — used for search/filter in the UI
 
     # Visual shape of the node in the graph editor.
     # Allowed values (pick the most accurate):
@@ -54,6 +55,7 @@ services:
         method: GET        # HTTP only: GET POST PUT PATCH DELETE
         path: /api/v1/...  # URL path or gRPC fully-qualified method path
         description: string
+        tags: [public, deprecated]   # optional free-form labels
 
     # --- Asynchronous workers / background tasks ---
     async:
@@ -69,9 +71,12 @@ services:
         #   task             — generic one-off or ad-hoc background task
         type: kafka_consumer
         topic: some.kafka.topic     # kafka_* types
-        queue: queue-name           # amqp_* and worker types
+        queue: queue-name           # amqp_* types (queue/exchange name)
         schedule: "0 2 * * *"       # cron type (standard cron expression)
         description: string
+        # worker/task types typically need only id/name/type/description —
+        # leave topic/queue/schedule out unless the task genuinely reads from one
+        tags: [critical-path]       # optional free-form labels
 
     # --- Domain events ---
     events:
@@ -80,6 +85,7 @@ services:
         type: publish      # publish | subscribe
         topic: domain.event.name
         description: string
+        tags: [billing]             # optional free-form labels
 
 interactions:
   - id: string             # unique kebab-case identifier  (REQUIRED)
@@ -109,6 +115,16 @@ interactions:
       sla_ms: 100
       circuit_breaker: true
 ` + "```" + `
+
+---
+
+## Tags (optional, but recommended)
+
+` + "`tags`" + ` accepts a list of free-form strings on services, endpoints, async tasks, and
+events. They power search/filter in the weavectl UI, so use values a human would actually
+search for — e.g. owning team (` + "`team-payments`" + `), domain area (` + "`billing`" + `, ` + "`auth`" + `),
+criticality (` + "`tier-1`" + `), or lifecycle (` + "`deprecated`" + `, ` + "`beta`" + `). Omit ` + "`tags`" + ` entirely
+rather than inventing generic filler values.
 
 ---
 
@@ -173,6 +189,7 @@ For each service, scan for calls to OTHER services:
 - [ ] External third-party systems use ` + "`shape: external`" + `.
 - [ ] No duplicate ` + "`id`" + ` values at any level.
 - [ ] All ` + "`id`" + ` values are kebab-case.
+- [ ] Any ` + "`tags`" + ` used are meaningful (team, domain, criticality, lifecycle) — not generic filler.
 
 ---
 

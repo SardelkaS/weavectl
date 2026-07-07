@@ -8,27 +8,37 @@ export function isServiceLevel(ix: Interaction): boolean {
   return !ix.from.includes('.') && !ix.to.includes('.')
 }
 
+/** True when a ref is a bare service ID (no `.memberId` suffix). */
+function isBareRef(ref: string): boolean {
+  return !ref.includes('.')
+}
+
 export function configToFlow(cfg: Config): {
   nodes: Node<ServiceNodeData>[]
   edges: Edge<InteractionEdgeData>[]
 } {
-  // Partition interactions: service-level ones become card items, not edges.
-  const svcLevelByService = new Map<string, Interaction[]>()
+  // An interaction shows up in a service's "Internal" card whenever THAT service's own
+  // side of the connection is a bare service ref (no specific endpoint/task/event) —
+  // regardless of whether the other side is bare too or points at a specific member.
+  // Interactions that are fully bare (both sides) are internal-only and never become an
+  // edge; half-bare ones (one side specific) are internal for the bare side *and* still
+  // rendered as a normal edge, since the specific side has a real handle to connect to.
+  const internalByService = new Map<string, Interaction[]>()
+  const addInternal = (svcId: string, ix: Interaction) => {
+    if (!internalByService.has(svcId)) internalByService.set(svcId, [])
+    const arr = internalByService.get(svcId)!
+    if (!arr.includes(ix)) arr.push(ix)
+  }
   for (const ix of cfg.interactions) {
-    if (!isServiceLevel(ix)) continue
-    for (const svcId of [ix.from, ix.to]) {
-      if (!svcLevelByService.has(svcId)) svcLevelByService.set(svcId, [])
-      // avoid duplicates when from === to
-      const arr = svcLevelByService.get(svcId)!
-      if (!arr.includes(ix)) arr.push(ix)
-    }
+    if (isBareRef(ix.from)) addInternal(ix.from, ix)
+    if (isBareRef(ix.to)) addInternal(ix.to, ix)
   }
 
   const nodes: ServiceNodeType[] = cfg.services.map((svc) => ({
     id: svc.id,
     type: 'service' as const,
     position: svc.position ?? { x: 0, y: 0 },
-    data: { service: svc, serviceInteractions: svcLevelByService.get(svc.id) ?? [] },
+    data: { service: svc, serviceInteractions: internalByService.get(svc.id) ?? [] },
   }))
 
   const edges: InteractionEdgeType[] = cfg.interactions

@@ -83,7 +83,6 @@ export interface Config {
   version: string
   name: string
   description?: string
-  ai_prompt?: string
   services: Service[]
   interactions: Interaction[]
 }
