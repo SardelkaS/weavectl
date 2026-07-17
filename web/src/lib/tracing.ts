@@ -8,6 +8,8 @@ export interface TraceResult {
   callerInteractionIds: Set<string>
   /** Service IDs involved */
   involvedServiceIds: Set<string>
+  /** `serviceId.memberId` refs of every member that takes part in the traced chain */
+  involvedMemberRefs: Set<string>
 }
 
 function memberRef(serviceId: string, memberId?: string): string {
@@ -33,6 +35,7 @@ export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult
   const calleeInteractionIds = new Set<string>()
   const callerInteractionIds = new Set<string>()
   const involvedServiceIds = new Set<string>([selected.serviceId])
+  const involvedMemberRefs = new Set<string>([startRef])
 
   // Forward BFS — what does the selected member call, directly or transitively?
   const forwardQueue = [startRef]
@@ -48,6 +51,8 @@ export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult
       calleeInteractionIds.add(ix.id)
       involvedServiceIds.add(serviceIdOf(ix.from))
       involvedServiceIds.add(serviceIdOf(ix.to))
+      involvedMemberRefs.add(ix.from)
+      involvedMemberRefs.add(ix.to)
       forwardQueue.push(ix.to)
     }
   }
@@ -66,9 +71,11 @@ export function computeTrace(cfg: Config, selected: SelectedMember): TraceResult
       callerInteractionIds.add(ix.id)
       involvedServiceIds.add(serviceIdOf(ix.from))
       involvedServiceIds.add(serviceIdOf(ix.to))
+      involvedMemberRefs.add(ix.from)
+      involvedMemberRefs.add(ix.to)
       backwardQueue.push(ix.from)
     }
   }
 
-  return { calleeInteractionIds, callerInteractionIds, involvedServiceIds }
+  return { calleeInteractionIds, callerInteractionIds, involvedServiceIds, involvedMemberRefs }
 }

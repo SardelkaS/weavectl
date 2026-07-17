@@ -1,11 +1,11 @@
-import { memo, useState } from 'react'
+import { memo, useState, useEffect, useContext, createContext } from 'react'
 import { Handle, Position, NodeProps, Node } from '@xyflow/react'
 import {
   ChevronDown, ChevronRight, Globe, Zap, Radio, Settings,
   Server, Database, MessageSquare, Shield, Link, Layers, LucideIcon,
 } from 'lucide-react'
 import { Service, ServiceShape } from '../types/schema'
-import { useGraphStore, useNodeHighlight } from '../store/graph'
+import { useGraphStore, useNodeHighlight, useMemberTrace } from '../store/graph'
 import {
   ENDPOINT_TYPE_COLORS,
   TASK_TYPE_COLORS,
@@ -15,6 +15,41 @@ import {
 
 export type ServiceNodeData = { service: Service } & Record<string, unknown>
 export type ServiceNodeType = Node<ServiceNodeData, 'service'>
+
+/** Whether the enclosing member group is expanded. Provided by <Section>, read by rows. */
+const SectionOpenContext = createContext(true)
+
+/**
+ * How a member row should render given the current collapse + trace state:
+ * - `hidden`  — collapsed group, and this member isn't part of the active trace chain.
+ * - `dimmed`  — a trace is active and this member isn't part of the chain (shown but faded).
+ * A member that IS in the chain always shows at full opacity, even inside a collapsed group.
+ */
+function useRowDisplay(svcId: string, id: string): { hidden: boolean; dimmed: boolean } {
+  const sectionOpen = useContext(SectionOpenContext)
+  const { hasTrace, inChain } = useMemberTrace(svcId, id)
+  const hidden = !sectionOpen && !(hasTrace && inChain)
+  const dimmed = hasTrace && !inChain
+  return { hidden, dimmed }
+}
+
+/**
+ * When a member's row is collapsed away, we still keep its connection handles mounted —
+ * otherwise React Flow drops every edge that pointed at the hidden member. The handles are
+ * anchored (absolutely, zero-height) at the top of the collapsed group's body, so those
+ * edges visually enter/exit the collapsed group instead of vanishing. Rendered in place of
+ * the row, so a given member's handle id lives in exactly one spot at a time.
+ */
+function CollapsedMemberHandles({ id, color }: { id: string; color: string }) {
+  return (
+    <>
+      <Handle type="target" position={Position.Left} id={`${id}-tgt`}
+        style={{ left: -6, top: 0, width: 8, height: 8, background: color, border: '1px solid white' }} />
+      <Handle type="source" position={Position.Right} id={`${id}-src`}
+        style={{ right: -6, top: 0, width: 8, height: 8, background: color, border: '1px solid white' }} />
+    </>
+  )
+}
 
 // ─── Shape definitions ────────────────────────────────────────────────────────
 
@@ -87,12 +122,15 @@ export const SHAPE_DEFS: Record<ServiceShape, ShapeDef> = {
 function EndpointRow({ svcId, id, name, type }: { svcId: string; id: string; name: string; type: string }) {
   const { selectMember, selectedMember } = useGraphStore()
   const isSelected = selectedMember?.serviceId === svcId && selectedMember?.memberId === id
+  const { hidden, dimmed } = useRowDisplay(svcId, id)
   const color = ENDPOINT_TYPE_COLORS[type] ?? '#6B7280'
+  if (hidden) return <CollapsedMemberHandles id={id} color={color} />
 
   return (
     <div
       className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
         ${isSelected ? 'bg-indigo-100 dark:bg-indigo-950 ring-1 ring-indigo-400 dark:ring-indigo-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+      style={{ opacity: dimmed ? 0.3 : 1 }}
       onClick={(e) => {
         e.stopPropagation()
         selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'endpoint' })
@@ -113,12 +151,15 @@ function EndpointRow({ svcId, id, name, type }: { svcId: string; id: string; nam
 function TaskRow({ svcId, id, name, type }: { svcId: string; id: string; name: string; type: string }) {
   const { selectMember, selectedMember } = useGraphStore()
   const isSelected = selectedMember?.serviceId === svcId && selectedMember?.memberId === id
+  const { hidden, dimmed } = useRowDisplay(svcId, id)
   const color = TASK_TYPE_COLORS[type] ?? '#6B7280'
+  if (hidden) return <CollapsedMemberHandles id={id} color={color} />
 
   return (
     <div
       className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
         ${isSelected ? 'bg-orange-100 dark:bg-orange-950 ring-1 ring-orange-400 dark:ring-orange-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+      style={{ opacity: dimmed ? 0.3 : 1 }}
       onClick={(e) => {
         e.stopPropagation()
         selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'async' })
@@ -139,12 +180,15 @@ function TaskRow({ svcId, id, name, type }: { svcId: string; id: string; name: s
 function EventRow({ svcId, id, name, type }: { svcId: string; id: string; name: string; type: string }) {
   const { selectMember, selectedMember } = useGraphStore()
   const isSelected = selectedMember?.serviceId === svcId && selectedMember?.memberId === id
+  const { hidden, dimmed } = useRowDisplay(svcId, id)
   const color = EVENT_TYPE_COLORS[type] ?? '#6B7280'
+  if (hidden) return <CollapsedMemberHandles id={id} color={color} />
 
   return (
     <div
       className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
         ${isSelected ? 'bg-green-100 dark:bg-green-950 ring-1 ring-green-400 dark:ring-green-600' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+      style={{ opacity: dimmed ? 0.3 : 1 }}
       onClick={(e) => {
         e.stopPropagation()
         selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'event' })
@@ -165,11 +209,14 @@ function EventRow({ svcId, id, name, type }: { svcId: string; id: string; name: 
 function InternalRow({ svcId, id, name }: { svcId: string; id: string; name: string }) {
   const { selectMember, selectedMember } = useGraphStore()
   const isSelected = selectedMember?.serviceId === svcId && selectedMember?.memberId === id
+  const { hidden, dimmed } = useRowDisplay(svcId, id)
+  if (hidden) return <CollapsedMemberHandles id={id} color={INTERNAL_PROCESS_COLOR} />
 
   return (
     <div
       className={`relative flex items-center gap-1.5 px-2 py-1 rounded text-xs cursor-pointer transition-colors
         ${isSelected ? 'bg-slate-200 dark:bg-slate-700 ring-1 ring-slate-400 dark:ring-slate-500' : 'hover:bg-gray-100 dark:hover:bg-gray-700'}`}
+      style={{ opacity: dimmed ? 0.3 : 1 }}
       onClick={(e) => {
         e.stopPropagation()
         selectMember(isSelected ? null : { serviceId: svcId, memberId: id, memberType: 'internal' })
@@ -190,7 +237,15 @@ function InternalRow({ svcId, id, name }: { svcId: string; id: string; name: str
 function Section({ label, icon, count, children }: {
   label: string; icon: React.ReactNode; count: number; children: React.ReactNode
 }) {
-  const [open, setOpen] = useState(true)
+  const sectionsCollapsed = useGraphStore((s) => s.sectionsCollapsed)
+  const [open, setOpen] = useState(!sectionsCollapsed)
+
+  // Re-sync with the toolbar's collapse/expand-all toggle each time it flips. Individual
+  // header clicks below still override locally until the next global toggle.
+  useEffect(() => {
+    setOpen(!sectionsCollapsed)
+  }, [sectionsCollapsed])
+
   if (count === 0) return null
   return (
     <div className="mt-1">
@@ -202,7 +257,14 @@ function Section({ label, icon, count, children }: {
         {icon}
         {label} ({count})
       </button>
-      {open && <div className="space-y-0.5 px-1">{children}</div>}
+      {/* Body is always mounted so that, while collapsed, (a) a member that's part of the
+          active trace chain can surface itself as a full row, and (b) every other member
+          keeps its connection handles mounted here (zero-height, absolutely positioned)
+          so edges still anchor to the collapsed group instead of disappearing.
+          `relative` makes those proxy handles anchor to this group's body, not the card. */}
+      <SectionOpenContext.Provider value={open}>
+        <div className="relative space-y-0.5 px-1">{children}</div>
+      </SectionOpenContext.Provider>
     </div>
   )
 }

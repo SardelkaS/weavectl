@@ -33,6 +33,26 @@ describe('computeTrace', () => {
     expect(trace.involvedServiceIds).toEqual(new Set(['a', 'b']))
   })
 
+  it('collects the member refs of every member in the chain (incl. the selected one)', () => {
+    // gateway.ep -> a.x -> b.y ; a also has an unrelated member a.z that isn't in the chain.
+    const cfg = configOf(
+      ['gateway', 'a', 'b'],
+      [
+        ix('gw-to-a', 'gateway.ep', 'a.x'),
+        ix('a-to-b', 'a.x', 'b.y'),
+        ix('z-to-b', 'a.z', 'b.y'),
+      ],
+    )
+    const trace = computeTrace(cfg, { serviceId: 'a', memberId: 'x', memberType: 'endpoint' })
+
+    // Selected member, its caller, and its callee are all in the chain…
+    expect(trace.involvedMemberRefs.has('a.x')).toBe(true)
+    expect(trace.involvedMemberRefs.has('gateway.ep')).toBe(true)
+    expect(trace.involvedMemberRefs.has('b.y')).toBe(true)
+    // …but a.z (an unrelated sibling that also calls b.y) is not.
+    expect(trace.involvedMemberRefs.has('a.z')).toBe(false)
+  })
+
   it('does not sweep in unrelated sibling members of a touched service (regression)', () => {
     // a.x -> b.y (b.y has no further calls). b also has an unrelated member b.w that
     // independently calls c — that call must NOT be highlighted just because b was touched.

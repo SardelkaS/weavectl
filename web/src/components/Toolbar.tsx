@@ -12,6 +12,8 @@ import {
   Redo2,
   Sun,
   Moon,
+  ChevronsDownUp,
+  ChevronsUpDown,
 } from 'lucide-react'
 import { useGraphStore } from '../store/graph'
 import { useThemeStore } from '../store/theme'
@@ -110,6 +112,21 @@ function ThemeToggle() {
       title={theme === 'dark' ? 'Switch to light theme' : 'Switch to dark theme'}
     >
       {theme === 'dark' ? <Sun size={15} /> : <Moon size={15} />}
+    </button>
+  )
+}
+
+function CollapseAllButton() {
+  const collapsed = useGraphStore((s) => s.sectionsCollapsed)
+  const toggle = useGraphStore((s) => s.toggleSectionsCollapsed)
+  return (
+    <button
+      className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-sm text-gray-600 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700"
+      onClick={toggle}
+      title={collapsed ? 'Expand all member groups' : 'Collapse all member groups'}
+    >
+      {collapsed ? <ChevronsUpDown size={15} /> : <ChevronsDownUp size={15} />}
+      <span className="hidden sm:inline">{collapsed ? 'Expand' : 'Collapse'}</span>
     </button>
   )
 }
@@ -213,6 +230,9 @@ export default function Toolbar() {
             <LayoutDashboard size={15} />
             <span className="hidden sm:inline">Layout</span>
           </button>
+
+          {/* Collapse / expand all member groups */}
+          <CollapseAllButton />
 
           {/* Import */}
           <div className="relative">

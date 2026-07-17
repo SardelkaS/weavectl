@@ -38,6 +38,9 @@ interface GraphStore {
   /** When true, selecting a graph element only highlights/traces it — the editor stays closed. */
   viewMode: boolean
 
+  /** Global collapse/expand-all signal for the member groups inside every service node. */
+  sectionsCollapsed: boolean
+
   loadConfig: (cfg: Config) => void
   onNodesChange: (changes: NodeChange<SNode>[]) => void
   onEdgesChange: (changes: EdgeChange<SEdge>[]) => void
@@ -47,6 +50,7 @@ interface GraphStore {
   selectMember: (member: SelectedMember | null) => void
   clearSelection: () => void
   toggleViewMode: () => void
+  toggleSectionsCollapsed: () => void
 
   addService: (svc: Service) => void
   updateService: (id: string, patch: Partial<Service>) => void
@@ -106,6 +110,7 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
   selectedMember: null,
   trace: null,
   viewMode: false,
+  sectionsCollapsed: false,
 
   loadConfig(cfg) {
     const { nodes, edges } = configToFlow(cfg)
@@ -171,6 +176,10 @@ export const useGraphStore = create<GraphStore>((set, get) => ({
 
   toggleViewMode() {
     set((s) => ({ viewMode: !s.viewMode }))
+  },
+
+  toggleSectionsCollapsed() {
+    set((s) => ({ sectionsCollapsed: !s.sectionsCollapsed }))
   },
 
   addService(svc) {
@@ -301,4 +310,15 @@ export function useEdgeHighlight(edgeId: string): 'callee' | 'caller' | 'dimmed'
   if (trace.calleeInteractionIds.has(edgeId)) return 'callee'
   if (trace.callerInteractionIds.has(edgeId)) return 'caller'
   return 'dimmed'
+}
+
+/**
+ * Trace state for a single member row.
+ * - `hasTrace`: a member is currently selected, so tracing is active.
+ * - `inChain`: this member takes part in the traced call chain.
+ */
+export function useMemberTrace(serviceId: string, memberId: string): { hasTrace: boolean; inChain: boolean } {
+  const trace = useGraphStore((s) => s.trace)
+  if (!trace) return { hasTrace: false, inChain: false }
+  return { hasTrace: true, inChain: trace.involvedMemberRefs.has(`${serviceId}.${memberId}`) }
 }
